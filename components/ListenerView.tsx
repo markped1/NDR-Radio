@@ -51,7 +51,7 @@ const ListenerView: React.FC<ListenerViewProps> = ({
       if (timerRef.current) window.clearTimeout(timerRef.current);
       timerRef.current = window.setTimeout(() => {
         nextAd();
-      }, 20000);
+      }, 30000);
     }
     return () => {
       if (timerRef.current) window.clearTimeout(timerRef.current);
@@ -92,7 +92,8 @@ const ListenerView: React.FC<ListenerViewProps> = ({
       reporterName: 'Listener',
       location,
       content: reportText,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      status: 'pending'
     });
     setReportText('');
     setIsReporting(false);
@@ -154,15 +155,20 @@ const ListenerView: React.FC<ListenerViewProps> = ({
           <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-green-700/60">Sponsored Highlights</h2>
         </header>
         <div className="space-y-4">
-          {sponsoredVideos.map((video) => (
-            <div key={video.id} className="relative aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white group">
-              <SponsoredVideo video={video} />
+          {currentAd ? (
+            <div key={currentAd.id} className="relative aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white group">
+              <SponsoredVideo video={currentAd} />
               <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-2 py-1 rounded-md flex items-center space-x-2">
-                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                <div className="w-1.5 h-1.5 bg-red-400 rounded-full animate-pulse"></div>
                 <span className="text-[7px] font-black text-white uppercase tracking-widest">Sponsored</span>
               </div>
             </div>
-          ))}
+          ) : (
+            <div className="bg-white/40 p-10 rounded-[2.5rem] border border-dashed border-green-200 text-center flex flex-col items-center text-green-800/40">
+              <i className="fas fa-video-slash text-2xl mb-2"></i>
+              <span className="text-[9px] font-black uppercase tracking-widest">Check back later</span>
+            </div>
+          )}
         </div>
       </section>
 

@@ -23,6 +23,7 @@ interface AdminViewProps {
   currentPosition: number;
   stationState: any; // Add stationState prop
   duration: number;   // Add duration prop
+  player?: React.ReactNode;
 }
 
 type Tab = 'command' | 'bulletin' | 'media' | 'inbox' | 'logs';
@@ -46,7 +47,8 @@ const AdminView: React.FC<AdminViewProps> = ({
   onTriggerFullBulletin,
   currentPosition,
   stationState,
-  duration
+  duration,
+  player
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
@@ -188,117 +190,146 @@ const AdminView: React.FC<AdminViewProps> = ({
       <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
       <input type="file" ref={folderInputRef} className="hidden" webkitdirectory="true" directory="true" multiple onChange={handleFileUpload} />
 
-      {/* 1. MASTER COMMAND CENTER */}
-      <section id="admin-command" className="space-y-4">
-        <header className="px-1">
-          <h2 className="text-xl font-black uppercase tracking-tighter text-green-950">Master Command</h2>
-          <p className="text-[8px] font-bold text-green-600 uppercase tracking-widest">Global Station Control</p>
+      {/* 1. THE MIDWAY - LIVE TRANSMISSION */}
+      <section id="admin-midway" className="space-y-4">
+        <header className="px-1 flex justify-between items-end">
+          <div>
+            <h2 className="text-xl font-black uppercase tracking-tighter text-[#008751]">The Midway</h2>
+            <p className="text-[8px] font-bold text-green-600 uppercase tracking-widest">Master Station Output</p>
+          </div>
+          <div className="flex items-center space-x-2">
+            <span className={`w-2 h-2 rounded-full ${isRadioPlaying ? 'bg-red-500 animate-pulse' : 'bg-gray-300'}`}></span>
+            <span className="text-[8px] font-black uppercase tracking-widest text-green-700">{isRadioPlaying ? 'LIVE' : 'OFF AIR'}</span>
+          </div>
         </header>
 
-        <div className="bg-white p-6 rounded-[2.5rem] border border-green-100 shadow-xl relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full -mr-16 -mt-16 opacity-50 group-hover:scale-110 transition-transform"></div>
-          <NowPlaying
-            state={stationState}
-            isAdmin={true}
-            isPlaying={isRadioPlaying}
-            onTogglePlay={handleToggleRadio}
-            showListenerControls={false}
-            onSeek={(time) => {
-              realtimeService.updateStation({
-                started_at: Date.now() - (time * 1000)
-              });
-            }}
-          />
-        </div>
+        <div className="bg-white p-8 rounded-[3rem] border-4 border-white shadow-2xl relative overflow-hidden group isolate">
+          <div className="absolute inset-0 bg-gradient-to-br from-green-50 to-transparent -z-10"></div>
 
-        {/* MASTER CONTROL BAR (Skip, Shuffle, Play All) */}
-        <div className="bg-white p-4 rounded-3xl border border-green-100 shadow-lg flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <button onClick={onSkipBack} className="w-10 h-10 rounded-full bg-green-50 text-green-700 flex items-center justify-center hover:bg-green-100 active:scale-95 transition-all">
-              <i className="fas fa-backward-step text-xs"></i>
-            </button>
-            <button onClick={handleToggleRadio} className="w-12 h-12 rounded-full bg-[#008751] text-white flex items-center justify-center shadow-md active:scale-95 transition-all">
-              <i className={`fas fa-${isRadioPlaying ? 'pause' : 'play'} text-sm ${!isRadioPlaying ? 'ml-1' : ''}`}></i>
-            </button>
-            <button onClick={onSkipNext} className="w-10 h-10 rounded-full bg-green-50 text-green-700 flex items-center justify-center hover:bg-green-100 active:scale-95 transition-all">
-              <i className="fas fa-forward-step text-xs"></i>
-            </button>
-          </div>
-
-          <div className="flex items-center space-x-2">
-            <button
-              onClick={onToggleShuffle}
-              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isShuffle ? 'bg-amber-100 text-amber-700 shadow-inner' : 'bg-gray-50 text-gray-400'}`}
-            >
-              <i className="fas fa-shuffle text-xs"></i>
-            </button>
-            <button
-              onClick={onPlayAll}
-              className="px-4 py-2.5 bg-green-950 text-white rounded-2xl text-[8px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center space-x-2"
-            >
-              <i className="fas fa-play-circle text-[10px]"></i>
-              <span>Master Play</span>
-            </button>
-          </div>
-        </div>
-
-        {/* ON-AIR VIDEO SLIDESHOW */}
-        <div className="space-y-3">
-          <header className="px-1">
-            <h3 className="text-[10px] font-black uppercase tracking-widest text-[#008751]/60">On-Air Media Cycle (30s)</h3>
-          </header>
-          <div className="relative aspect-video rounded-[2.5rem] overflow-hidden shadow-2xl bg-black border-4 border-white">
-            {mediaList.filter(m => m.type === 'video').length > 0 ? (
-              <>
-                <video
-                  key={mediaList.filter(m => m.type === 'video')[currentVideoIndex]?.url}
-                  src={mediaList.filter(m => m.type === 'video')[currentVideoIndex]?.url}
-                  autoPlay muted playsInline
-                  className="w-full h-full object-contain"
-                />
-                <div className="absolute top-4 left-4 flex items-center space-x-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded-md">
-                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
-                  <span className="text-[7px] font-black text-white uppercase tracking-widest">Cycling: Ad {currentVideoIndex + 1}</span>
+          <div className="flex flex-col items-center text-center space-y-6">
+            {/* Visualizer / Artwork Area */}
+            <div className="w-32 h-32 bg-[#008751]/5 rounded-[2.5rem] flex items-center justify-center border border-green-100 shadow-inner relative overflow-hidden">
+              {isRadioPlaying && (
+                <div className="absolute inset-0 flex items-center justify-center space-x-1">
+                  {[1, 2, 3, 4].map(i => <div key={i} className={`w-1 bg-[#008751] rounded-full animate-music-bar-${(i % 3) + 1}`} style={{ height: '30%' }}></div>)}
                 </div>
-              </>
-            ) : (
-              <div className="w-full h-full flex flex-col items-center justify-center text-white/20 space-y-2">
-                <i className="fas fa-film text-3xl"></i>
-                <span className="text-[9px] font-black uppercase tracking-widest">No Videos in Library</span>
-              </div>
-            )}
-          </div>
-        </div>
+              )}
+              <i className={`fas fa-${isRadioPlaying ? 'tower-broadcast' : 'radio'} text-3xl text-green-950/20`}></i>
+            </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <button onClick={() => folderInputRef.current?.click()} className="bg-white p-6 rounded-3xl border border-green-100 flex flex-col items-center justify-center space-y-2 hover:bg-green-50 shadow-sm active:scale-95 transition-all">
-            <i className="fas fa-folder-open text-xl text-green-600"></i>
-            <span className="text-[9px] font-black uppercase tracking-widest">Batch Import</span>
-          </button>
-          <div className="bg-white p-6 rounded-3xl border border-amber-100 space-y-3 shadow-sm">
-            <h3 className="text-[8px] font-black uppercase tracking-widest text-amber-600">Flash Jingles</h3>
-            <div className="flex space-x-2">
-              <button onClick={() => onPlayJingle?.(1)} className="flex-1 bg-amber-500 text-white py-2.5 rounded-xl text-[8px] font-black uppercase shadow-sm active:scale-95 transition-all">ID 1</button>
-              <button onClick={() => onPlayJingle?.(2)} className="flex-1 bg-amber-500 text-white py-2.5 rounded-xl text-[8px] font-black uppercase shadow-sm active:scale-95 transition-all">ID 2</button>
+            <div className="space-y-2 max-w-xs">
+              <h3 className="text-lg font-black text-green-950 uppercase tracking-tighter line-clamp-2 leading-none">
+                {currentTrackName || 'Station Standby'}
+              </h3>
+              <p className="text-[9px] font-bold text-green-600/60 uppercase tracking-widest mt-1">
+                {isRadioPlaying ? 'Current Transmission' : 'Awaiting Broadcaster'}
+              </p>
             </div>
-          </div>
-        </div>
 
-        <div className="bg-blue-600 p-4 rounded-3xl text-white flex items-center justify-between shadow-lg">
-          <div className="flex items-center space-x-3">
-            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
-              <i className="fas fa-satellite-dish text-[10px]"></i>
+            {/* Master Control Suite */}
+            <div className="flex items-center space-x-6">
+              <button
+                onClick={onSkipBack}
+                className="w-12 h-12 rounded-2xl bg-green-50 text-green-700 flex items-center justify-center hover:bg-green-100 active:scale-90 transition-all border border-green-100"
+              >
+                <i className="fas fa-backward-step text-sm"></i>
+              </button>
+
+              <button
+                onClick={handleToggleRadio}
+                className={`w-20 h-20 rounded-[2rem] flex items-center justify-center shadow-xl transition-all active:scale-95 border-4 border-white ${isRadioPlaying ? 'bg-[#f14d4d] text-white shadow-[#f14d4d]/20' : 'bg-[#008751] text-white shadow-[#008751]/20'}`}
+              >
+                <i className={`fas fa-${isRadioPlaying ? 'pause' : 'play'} text-2xl ${!isRadioPlaying ? 'ml-1' : ''}`}></i>
+              </button>
+
+              <button
+                onClick={onSkipNext}
+                className="w-12 h-12 rounded-2xl bg-green-50 text-green-700 flex items-center justify-center hover:bg-green-100 active:scale-90 transition-all border border-green-100"
+              >
+                <i className="fas fa-forward-step text-sm"></i>
+              </button>
             </div>
-            <div>
-              <p className="text-[9px] font-black uppercase tracking-tighter">Auto-Sync Heartbeat</p>
-              <p className="text-[7px] font-bold opacity-70 uppercase">Headlines + Weather</p>
+
+            {/* Master Player Engine - Visible for Admin to ensur audibility */}
+            <div className="w-full">
+              {player}
             </div>
-          </div>
-          <div className="text-right">
-            <p className="text-[12px] font-mono font-black">{nextSyncIn}</p>
+
+            <div className="flex items-center space-x-4 w-full px-4 pt-4 border-t border-green-50">
+              <button
+                onClick={onToggleShuffle}
+                className={`flex-1 py-3 rounded-xl text-[8px] font-black uppercase tracking-widest transition-all ${isShuffle ? 'bg-amber-100 text-amber-700 border border-amber-200' : 'bg-gray-50 text-gray-400 border border-gray-100'}`}
+              >
+                <i className="fas fa-shuffle mr-2"></i> Shuffle
+              </button>
+              <button
+                onClick={onPlayAll}
+                className="flex-3 px-6 py-3 bg-green-950 text-white rounded-xl text-[8px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+              >
+                <i className="fas fa-play-circle mr-2"></i> Master Play
+              </button>
+            </div>
           </div>
         </div>
       </section>
+
+      {/* ON-AIR VIDEO SLIDESHOW */}
+      <div className="space-y-3">
+        <header className="px-1">
+          <h3 className="text-[10px] font-black uppercase tracking-widest text-[#008751]/60">On-Air Media Cycle (30s)</h3>
+        </header>
+        <div className="relative aspect-video rounded-[2.5rem] overflow-hidden shadow-2xl bg-black border-4 border-white">
+          {mediaList.filter(m => m.type === 'video').length > 0 ? (
+            <>
+              <video
+                key={mediaList.filter(m => m.type === 'video')[currentVideoIndex]?.url}
+                src={mediaList.filter(m => m.type === 'video')[currentVideoIndex]?.url}
+                autoPlay muted playsInline
+                className="w-full h-full object-contain"
+              />
+              <div className="absolute top-4 left-4 flex items-center space-x-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded-md">
+                <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                <span className="text-[7px] font-black text-white uppercase tracking-widest">Cycling: Ad {currentVideoIndex + 1}</span>
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-full flex flex-col items-center justify-center text-white/20 space-y-2">
+              <i className="fas fa-film text-3xl"></i>
+              <span className="text-[9px] font-black uppercase tracking-widest">No Videos in Library</span>
+            </div>
+          )}
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-3">
+        <button onClick={() => folderInputRef.current?.click()} className="bg-white p-6 rounded-3xl border border-green-100 flex flex-col items-center justify-center space-y-2 hover:bg-green-50 shadow-sm active:scale-95 transition-all">
+          <i className="fas fa-folder-open text-xl text-green-600"></i>
+          <span className="text-[9px] font-black uppercase tracking-widest">Batch Import</span>
+        </button>
+        <div className="bg-white p-6 rounded-3xl border border-amber-100 space-y-3 shadow-sm">
+          <h3 className="text-[8px] font-black uppercase tracking-widest text-amber-600">Flash Jingles</h3>
+          <div className="flex space-x-2">
+            <button onClick={() => onPlayJingle?.(1)} className="flex-1 bg-amber-500 text-white py-2.5 rounded-xl text-[8px] font-black uppercase shadow-sm active:scale-95 transition-all">ID 1</button>
+            <button onClick={() => onPlayJingle?.(2)} className="flex-1 bg-amber-500 text-white py-2.5 rounded-xl text-[8px] font-black uppercase shadow-sm active:scale-95 transition-all">ID 2</button>
+          </div>
+        </div>
+      </div>
+
+      <div className="bg-blue-600 p-4 rounded-3xl text-white flex items-center justify-between shadow-lg">
+        <div className="flex items-center space-x-3">
+          <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
+            <i className="fas fa-satellite-dish text-[10px]"></i>
+          </div>
+          <div>
+            <p className="text-[9px] font-black uppercase tracking-tighter">Auto-Sync Heartbeat</p>
+            <p className="text-[7px] font-bold opacity-70 uppercase">Headlines + Weather</p>
+          </div>
+        </div>
+        <div className="text-right">
+          <p className="text-[12px] font-mono font-black">{nextSyncIn}</p>
+        </div>
+      </div>
+
 
       {/* 3. MODERATION INBOX */}
       <section id="admin-inbox" className="space-y-4">
@@ -404,7 +435,7 @@ const AdminView: React.FC<AdminViewProps> = ({
           </div>
         </div>
       </section>
-    </div>
+    </div >
   );
 };
 

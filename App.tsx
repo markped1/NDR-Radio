@@ -398,6 +398,31 @@ const App: React.FC = () => {
               currentPosition={currentPosition}
               stationState={stationState}
               duration={duration}
+              player={
+                <RadioPlayer
+                  onStateChange={(playing) => {
+                    setIsRadioPlaying(playing);
+                    if (role === UserRole.ADMIN) {
+                      realtimeService.updateStation({
+                        is_playing: playing,
+                        track_name: currentTrackName,
+                        track_id: activeTrackId || undefined,
+                        updated_at: Date.now()
+                      });
+                    }
+                  }}
+                  activeTrackUrl={activeTrackUrl}
+                  currentTrackName={currentTrackName}
+                  forcePlaying={isRadioPlaying}
+                  onTrackEnded={handlePlayNext}
+                  onTimeUpdate={setCurrentPosition}
+                  onDurationChange={setDuration}
+                  startTime={startTime}
+                  isDucking={isDucking}
+                  role={role}
+                  visualOnly={false}
+                />
+              }
             />
           </div>
         ) : (
@@ -446,30 +471,23 @@ const App: React.FC = () => {
         </div>
       )}
 
-      {/* Hidden Player Engine */}
-      <div className="hidden">
-        <RadioPlayer
-          onStateChange={(playing) => {
-            setIsRadioPlaying(playing);
-            if (role === UserRole.ADMIN) {
-              realtimeService.updateStation({
-                is_playing: playing,
-                track_name: currentTrackName,
-                updated_at: Date.now()
-              });
-            }
-          }}
-          activeTrackUrl={activeTrackUrl}
-          currentTrackName={currentTrackName}
-          forcePlaying={isRadioPlaying}
-          onTrackEnded={handlePlayNext}
-          onTimeUpdate={setCurrentPosition}
-          onDurationChange={setDuration}
-          startTime={startTime}
-          isDucking={isDucking}
-          role={role}
-        />
-      </div>
+      {/* Listener Hidden Engine */}
+      {role === UserRole.LISTENER && (
+        <div className="hidden">
+          <RadioPlayer
+            onStateChange={setIsRadioPlaying}
+            activeTrackUrl={activeTrackUrl}
+            currentTrackName={currentTrackName}
+            forcePlaying={isRadioPlaying}
+            onTrackEnded={handlePlayNext}
+            onTimeUpdate={setCurrentPosition}
+            onDurationChange={setDuration}
+            startTime={startTime}
+            isDucking={isDucking}
+            role={role}
+          />
+        </div>
+      )}
 
       {showAuth && <PasswordModal onClose={() => setShowAuth(false)} onSuccess={() => { setRole(UserRole.ADMIN); setShowAuth(false); }} />}
 
