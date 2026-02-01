@@ -2,7 +2,14 @@ import { GoogleGenAI } from "@google/genai";
 
 export const getAIClient = () => {
   const apiKey = import.meta.env.VITE_GEMINI_API_KEY;
-  if (!apiKey) console.warn("Gemini API Key missing!");
+
+  // NDR DIAGNOSIS: Helping user see if keys are detected in the browser
+  if (!apiKey || apiKey === 'INVALID_KEY') {
+    console.error("[NDR KEYS] Gemini API Key is missing in the browser! Please check .env.local or your CI/CD settings.");
+  } else {
+    console.log(`[NDR KEYS] Gemini API Key detected (Starts with: ${apiKey.substring(0, 6)}...)`);
+  }
+
   return new GoogleGenAI(apiKey || 'INVALID_KEY');
 };
 

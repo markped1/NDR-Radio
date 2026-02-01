@@ -92,10 +92,18 @@ const ListenerView: React.FC<ListenerViewProps> = ({
     const defaultText = "WELCOME TO NIGERIA DIASPORA RADIO • THE VOICE OF NIGERIA ABROAD • STREAMING LIVE AFROBEATS AND CULTURE";
     const hasNews = news && news.length > 0;
 
+    // VERIFICATION LOG: Helping user see if data is actually arriving
+    if (Date.now() % 5000 < 1000) { // Log once every ~5 seconds to avoid flood
+      console.log(`[NDR TICKER SYNC] Currently displaying ${news?.length || 0} headlines.`);
+    }
+
     // Create a dynamic ticker string with high-impact separators
-    const tickerText = hasNews
+    // Duplicating many times to ensure continuous marquee regardless of screen width
+    const baseText = hasNews
       ? news.map(n => n.title.toUpperCase()).join(' • ')
       : defaultText;
+
+    const tickerText = `${baseText} • ${baseText} • ${baseText} • ${baseText}`;
 
     return (
       <div className="bg-[#008751] py-3 shadow-lg overflow-hidden relative border-y border-white/10 flex items-center">
@@ -105,7 +113,7 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         </div>
         <div className="flex whitespace-nowrap animate-marquee flex-grow">
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/90 px-4">
-            {tickerText} • {tickerText}
+            {tickerText}
           </span>
         </div>
       </div>
@@ -137,7 +145,10 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         />
       </section>
 
-      {/* 2. SPONSORED HIGHLIGHTS */}
+      {/* 2. NEWS TICKER */}
+      {renderTicker()}
+
+      {/* 3. SPONSORED HIGHLIGHTS */}
       <section className="px-6 space-y-6">
         <header className="px-2 flex justify-between items-center">
           <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-green-700/60">Sponsored Highlights</h2>
@@ -342,8 +353,6 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         </div>
       </div>
 
-      {renderTicker()}
-
       <div className="flex-grow">
         {activeTab === 'home' && renderHome()}
         {activeTab === 'news' && renderNews()}
@@ -358,8 +367,8 @@ const ListenerView: React.FC<ListenerViewProps> = ({
 
       <style dangerouslySetInnerHTML={{
         __html: `
-        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        .animate-marquee { display: inline-flex; animation: marquee 15s linear infinite; }
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-25%); } }
+        .animate-marquee { display: inline-flex; animation: marquee 8s linear infinite; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
       `}} />
     </div>

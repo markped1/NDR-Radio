@@ -1,6 +1,4 @@
 
-import { Type } from "@google/genai";
-import { getAIClient, withRetry } from './geminiService';
 import { dbService } from './dbService';
 import { NewsItem } from '../types';
 
@@ -10,90 +8,103 @@ export interface WeatherData {
   location: string;
 }
 
+const NEWSDATA_API_KEY = import.meta.env.VITE_NEWSDATA_API_KEY;
+const NEWSDATA_BASE_URL = 'https://newsdata.io/api/1/news';
+
 export async function scanNigerianNewspapers(locationLabel: string = "Global"): Promise<{ news: NewsItem[], weather?: WeatherData }> {
   await dbService.cleanupOldNews();
   const existingNews = await dbService.getNews();
 
-  return withRetry(async () => {
-    const ai = getAIClient();
-    console.log("Triggering live news scan via Gemini 2.0 Flash (Grounding enabled)...");
+  // Check if API key is available
+  if (!NEWSDATA_API_KEY || NEWSDATA_API_KEY === 'INVALID_KEY' || NEWSDATA_API_KEY === 'YOUR_NEWSDATA_API_KEY_HERE') {
+    console.warn("[NDR NEWS] NewsData.io API key missing. Using cached news.");
+    return { news: existingNews };
+  }
 
-    const prompt = `Search for the most CURRENT breaking news (strictly last 24 hours) from global and Nigerian sources.
-        ALSO, find the current weather conditions for ${locationLabel}.
-        
-        FOCUS AREAS:
-        1. NIGERIA BREAKING: Politics and Economy.
-        2. DIASPORA: Nigerian community updates worldwide.
-        3. SPORTS: Latest Nigerian football/sports results.
-        4. WEATHER: Current temp and sky conditions in ${locationLabel}.
-        
-        CRITICAL: Return EXACTLY a JSON object with this structure:
-        {
-          "news": [{"title": "Short Title", "content": "150-200 word detailed story", "category": "Nigeria|Sports|etc"}],
-          "weather": {"condition": "Description", "temp": "XX°C", "location": "City Name"}
-        }`;
+  try {
+    console.log("[NDR NEWS] Auto-scanning Nigerian and diaspora news...");
 
-    try {
-      const response = await ai.models.generateContent({
-        model: "gemini-2.0-flash",
-        contents: [{ role: 'user', parts: [{ text: prompt }] }],
-        config: {
-          tools: [{ googleSearch: {} }] as any,
-        },
-      });
+    // Fetch Nigerian news
+    const nigeriaUrl = `${NEWSDATA_BASE_URL}?apikey=${NEWSDATA_API_KEY}&country=ng&language=en`;
 
-      const text = response.text || "{}";
-      console.log("AI Raw Response:", text);
+    // Fetch diaspora-related news (search for "Nigerian diaspora" globally)
+    const diasporaUrl = `${NEWSDATA_BASE_URL}?apikey=${NEWSDATA_API_KEY}&q=Nigerian%20diaspora&language=en`;
 
-      // Extract JSON from potential markdown blocks
-      let jsonStr = text;
-      if (text.includes('```')) {
-        const matches = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
-        if (matches && matches[1]) {
-          jsonStr = matches[1];
-        }
-      }
+    const [nigeriaResponse, diasporaResponse] = await Promise.all([
+      fetch(nigeriaUrl).catch(() => null),
+      fetch(diasporaUrl).catch(() => null)
+    ]);
 
-      const data = JSON.parse(jsonStr);
-      console.log("AI Parsed Data:", data);
+    let allNewsItems: any[] = [];
 
-      const processedNews: NewsItem[] = (data.news || []).map((item: any) => ({
-        id: Math.random().toString(36).substr(2, 9),
-        title: item.title,
-        content: item.content,
-        category: item.category as any,
-        timestamp: Date.now()
+    // Process Nigerian news
+    if (nigeriaResponse?.ok) {
+      const nigeriaData = await nigeriaResponse.json();
+      const nigeriaItems = (nigeriaData.results || []).map((item: any) => ({
+        ...item,
+        source_category: 'Nigeria'
+      }));
+      allNewsItems.push(...nigeriaItems);
+      console.log(`[NDR NEWS] Fetched ${nigeriaItems.length} Nigerian news items`);
+    }
+
+    // Process diaspora news
+    if (diasporaResponse?.ok) {
+      const diasporaData = await diasporaResponse.json();
+      const diasporaItems = (diasporaData.results || []).map((item: any) => ({
+        ...item,
+        source_category: 'Diaspora'
+      }));
+      allNewsItems.push(...diasporaItems);
+      console.log(`[NDR NEWS] Fetched ${diasporaItems.length} diaspora news items`);
+    }
+
+    // Process and deduplicate news items
+    const processedNews: NewsItem[] = allNewsItems
+      .slice(0, 20) // Limit to 20 most recent
+      .map((item: any) => ({
+        id: item.article_id || Math.random().toString(36).substr(2, 9),
+        title: item.title || 'Untitled',
+        content: item.description || item.content || 'No content available',
+        category: item.source_category || item.category?.[0] || 'General',
+        timestamp: new Date(item.pubDate).getTime() || Date.now()
       }));
 
-      if (processedNews.length > 0) {
-        console.log(`Successfully fetched ${processedNews.length} news items. Storing to Supabase...`);
-        await dbService.saveNews(processedNews);
-      }
+    if (processedNews.length > 0) {
+      console.log(`[NDR NEWS] Successfully processed ${processedNews.length} total news items. Storing to database...`);
+      await dbService.saveNews(processedNews);
 
       return {
         news: processedNews,
-        weather: data.weather
+        weather: { condition: 'Fair', temp: '25°C', location: locationLabel }
       };
-    } catch (error) {
-      console.error("Advanced News/Weather scanning failed", error);
-
-      if (existingNews.length === 0) {
-        const offlineNews = [{
-          id: 'offline-' + Date.now(),
-          title: 'Welcome to Nigeria Diaspora Radio - Live Broadcast',
-          content: 'We are currently tuning our AI satellites. Enjoy our curated selection of afrobeats while we connect to the news feed.',
-          category: 'Station Update',
-          timestamp: Date.now()
-        }];
-
-        await dbService.setNews(offlineNews as NewsItem[]);
-
-        return {
-          news: offlineNews as NewsItem[],
-          weather: { condition: 'Fair', temp: '25°C', location: 'Lagos' }
-        };
-      }
-      return { news: existingNews };
     }
-  });
+
+    // If no news fetched, return existing
+    console.warn("[NDR NEWS] No new news items fetched, using cached news");
+    return { news: existingNews };
+
+  } catch (error) {
+    console.error("[NDR NEWS] NewsData.io fetch failed:", error);
+
+    // Fallback to offline news if no existing news
+    if (existingNews.length === 0) {
+      const offlineNews = [{
+        id: 'offline-' + Date.now(),
+        title: 'Welcome to Nigeria Diaspora Radio - Live Broadcast',
+        content: 'We are currently tuning our AI satellites. Enjoy our curated selection of afrobeats while we connect to the news feed.',
+        category: 'Station Update',
+        timestamp: Date.now()
+      }];
+
+      await dbService.setNews(offlineNews as NewsItem[]);
+
+      return {
+        news: offlineNews as NewsItem[],
+        weather: { condition: 'Fair', temp: '25°C', location: 'Lagos' }
+      };
+    }
+
+    return { news: existingNews };
+  }
 }

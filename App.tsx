@@ -10,6 +10,7 @@ import { realtimeService } from './services/realtimeService';
 import { UserRole, MediaFile, AdminMessage, AdminLog, NewsItem, ListenerReport } from './types';
 import { DESIGNER_NAME, APP_NAME, JINGLE_1, JINGLE_2 } from './constants';
 import { StationState } from './services/realtimeService';
+import { initBroadcastScheduler, stopBroadcastScheduler } from './services/broadcastScheduler';
 
 const App: React.FC = () => {
   const [role, setRole] = useState<UserRole>(UserRole.LISTENER);
@@ -207,6 +208,23 @@ const App: React.FC = () => {
     return () => clearInterval(heartbeat);
   }, [runScheduledBroadcast]);
 
+  // Frequent UI Data Polling (10s)
+  useEffect(() => {
+    const poll = setInterval(fetchData, 10000);
+    return () => clearInterval(poll);
+  }, [fetchData]);
+
+  // Auto-scan news every 30 minutes
+  useEffect(() => {
+    const autoScan = setInterval(async () => {
+      console.log("[NDR AUTO-SCAN] Running scheduled news scan...");
+      await scanNigerianNewspapers(currentLocation);
+      await fetchData();
+    }, 1800000); // 30 minutes
+
+    return () => clearInterval(autoScan);
+  }, [currentLocation, fetchData]);
+
   useEffect(() => {
     if (hasInteracted && pendingAudioRef.current) {
       const audio = pendingAudioRef.current;
@@ -218,7 +236,10 @@ const App: React.FC = () => {
   useEffect(() => {
     fetchData();
     // Silent initial sync
-    const syncTimeout = setTimeout(() => scanNigerianNewspapers(currentLocation).then(() => fetchData()), 3000);
+    const syncTimeout = setTimeout(() => {
+      console.log("Initial News & Weather sync trigger...");
+      scanNigerianNewspapers(currentLocation).then(() => fetchData())
+    }, 2000);
 
     const interactionHandler = () => {
       setHasInteracted(true);
@@ -270,8 +291,9 @@ const App: React.FC = () => {
         }
 
         // Always sync the playing state for listeners
-        if (!state.is_playing) {
-          setIsRadioPlaying(false);
+        if (state.is_playing !== isRadioPlayingRef.current) {
+          console.log(`[NDR AUDIO SYNC] Syncing play state to: ${state.is_playing}`);
+          setIsRadioPlaying(state.is_playing);
         }
 
         if (state.active_tab) {
@@ -283,11 +305,28 @@ const App: React.FC = () => {
     });
 
     return () => {
-      clearTimeout(syncTimeout);
-      window.removeEventListener('click', interactionHandler);
       unsubscribe();
+      window.removeEventListener('click', interactionHandler);
+      clearTimeout(syncTimeout);
     };
-  }, [fetchData, currentLocation, role]); // REMOVED isRadioPlaying to prevent infinite loop
+  }, [role, fetchData, currentLocation]);
+
+  // Initialize broadcast scheduler (Admin only)
+  useEffect(() => {
+    if (role === UserRole.ADMIN) {
+      console.log("[NDR BROADCAST] Initializing scheduler for admin...");
+
+      initBroadcastScheduler({
+        onPlayAudio: playRawPcm,
+        currentLocation,
+        enabled: true
+      });
+
+      return () => {
+        stopBroadcastScheduler();
+      };
+    }
+  }, [role, currentLocation, playRawPcm]);
 
   // Broadcast Admin Actions (AdminView handles the detailed updates now)
   // We keep this simple effect just for safety if needed, but AdminView drives the bus.
@@ -471,9 +510,11 @@ const App: React.FC = () => {
               }}
               isRadioPlaying={stationState?.is_playing || false}
               onToggleRadio={() => {
+                const nextPlaying = !stationState?.is_playing;
+                setIsRadioPlaying(nextPlaying); // Local Update
                 if (role === UserRole.ADMIN) {
                   realtimeService.updateStation({
-                    is_playing: !(stationState?.is_playing),
+                    is_playing: nextPlaying,
                     updated_at: Date.now()
                   });
                 }
@@ -481,7 +522,7 @@ const App: React.FC = () => {
               currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
               onPlayAll={handlePlayAll} onSkipNext={handlePlayNext} onSkipBack={handlePlayPrevious}
               onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
-              news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
+              news={news} onTriggerFullBulletin={() => runScheduledBroadcast(true)}
               currentPosition={currentPosition}
               stationState={stationState}
               duration={duration}
