@@ -250,8 +250,8 @@ const AdminView: React.FC<AdminViewProps> = ({
               </button>
             </div>
 
-            {/* Master Player Engine - Visible for Admin to ensur audibility */}
-            <div className="w-full">
+            {/* Master Player Engine - Compact for Admin */}
+            <div className="w-full px-4">
               {player}
             </div>
 
@@ -264,9 +264,9 @@ const AdminView: React.FC<AdminViewProps> = ({
               </button>
               <button
                 onClick={onPlayAll}
-                className="flex-[3] px-6 py-3 bg-green-950 text-white rounded-xl text-[8px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                className="flex-[3] px-6 py-4 bg-[#008751] text-white rounded-[1.5rem] text-[10px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-95 transition-all border-b-4 border-green-950"
               >
-                <i className="fas fa-play-circle mr-2"></i> Master
+                <i className="fas fa-play-circle mr-2 text-[12px]"></i> MASTER
               </button>
             </div>
           </div>

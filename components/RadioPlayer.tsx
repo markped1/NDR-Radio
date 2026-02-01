@@ -17,6 +17,7 @@ interface RadioPlayerProps {
   role?: UserRole;
   isDucking?: boolean;
   visualOnly?: boolean; // New prop to show UI only, not run engine
+  compact?: boolean;    // Minimal UI for Admin Midway
 }
 
 const RadioPlayer: React.FC<RadioPlayerProps> = ({
@@ -30,7 +31,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   startTime = 0,
   role = UserRole.LISTENER,
   isDucking = false,
-  visualOnly = false
+  visualOnly = false,
+  compact = false
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1.0);
@@ -184,6 +186,31 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   }
 
   // If this is the VISUAL representation
+  if (compact) {
+    return (
+      <div className="w-full bg-green-50/30 rounded-2xl p-4 border border-green-100/50 flex items-center justify-between">
+        <div className="flex items-center space-x-3">
+          <div className={`w-8 h-8 rounded-full flex items-center justify-center ${isPlaying ? 'bg-[#008751] text-white animate-pulse' : 'bg-gray-200 text-gray-400'}`}>
+            <i className={`fas fa-${isPlaying ? 'volume-up' : 'volume-mute'} text-[10px]`}></i>
+          </div>
+          <div>
+            <p className="text-[10px] font-black uppercase text-green-950 truncate max-w-[120px]">{currentTrackName}</p>
+            <p className="text-[7px] font-bold text-green-600 uppercase tracking-widest">{status}</p>
+          </div>
+        </div>
+        <div className="flex items-center space-x-2">
+          <span className="text-[9px] font-black text-green-900 mono">{formatTime(currentTime)}</span>
+          <button
+            onClick={(e) => { e.stopPropagation(); initAudioContext(); if (isPlaying) audioRef.current?.pause(); else audioRef.current?.play(); }}
+            className="w-8 h-8 rounded-full bg-white border border-green-100 flex items-center justify-center shadow-sm active:scale-90"
+          >
+            <i className={`fas fa-${isPlaying ? 'pause' : 'play'} text-[10px] text-[#008751]`}></i>
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col items-center w-full px-6 py-8 animate-in fade-in zoom-in duration-500">
       {/* 1. ARTWORK / LOGO SECTION */}

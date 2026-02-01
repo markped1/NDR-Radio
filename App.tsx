@@ -422,6 +422,7 @@ const App: React.FC = () => {
                   role={role}
                   isAdmin={true}
                   visualOnly={false}
+                  compact={true}
                 />
               }
             />
