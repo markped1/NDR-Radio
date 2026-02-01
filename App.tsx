@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import ListenerView from './components/ListenerView';
 import AdminView from './components/AdminView';
@@ -7,6 +6,7 @@ import RadioPlayer from './components/RadioPlayer';
 import { dbService } from './services/dbService';
 import { scanNigerianNewspapers } from './services/newsAIService';
 import { getDetailedBulletinAudio, getNewsAudio, getJingleAudio } from './services/aiDjService';
+import { realtimeService } from './services/realtimeService';
 import { UserRole, MediaFile, AdminMessage, AdminLog, NewsItem, ListenerReport } from './types';
 import { DESIGNER_NAME, APP_NAME, JINGLE_1, JINGLE_2 } from './constants';
 
@@ -74,7 +74,6 @@ const App: React.FC = () => {
       setNews(n || []);
       setLogs(l || []);
       setSponsoredMedia(processedMedia.filter(item => item.type === 'video' || item.type === 'image'));
-      // Sort alphabetically to ensure Global Sync works identically on all devices
       // Sort alphabetically to ensure Global Sync works identically on all devices
       setAudioPlaylist(processedMedia.filter(item => item.type === 'audio').sort((a, b) => a.name.toLowerCase().localeCompare(b.name.toLowerCase())));
       setAdminMessages(msg || []);
@@ -215,49 +214,44 @@ const App: React.FC = () => {
     };
     window.addEventListener('click', interactionHandler, { once: true });
 
-    // Synchronization Channel
-    const channel = new BroadcastChannel('ndr_radio_sync');
-    channel.onmessage = (event) => {
-      if (role === UserRole.LISTENER && event.data.type === 'PLAY_TRACK') {
-        // Sync Listener to Admin's Track
-        const { trackId, trackUrl, trackName } = event.data;
-        setActiveTrackId(trackId);
-        setActiveTrackUrl(trackUrl);
-        setCurrentTrackName(trackName);
-        setIsRadioPlaying(true);
-      } else if (role === UserRole.LISTENER && event.data.type === 'PAUSE') {
+    // REAL-TIME CLOUD SYNC
+    const unsubscribe = realtimeService.subscribeToStation((state) => {
+      // If I am the Admin, I ignore updates to avoid loops
+      if (role === UserRole.ADMIN) return;
+
+      console.log("Cloud Update:", state);
+
+      if (state.is_playing && state.track_name) {
+        const track = playlistRef.current.find(t => t.name === state.track_name);
+
+        if (track) {
+          setActiveTrackId(track.id);
+          setActiveTrackUrl(track.url);
+          setCurrentTrackName(cleanTrackName(track.name));
+
+          // CRITICAL FIX: Only auto-play if the listener is ALREADY actively listening.
+          if (isRadioPlaying) {
+            setIsRadioPlaying(true);
+          }
+        }
+      } else {
+        // If Admin stops, we stop everyone
         setIsRadioPlaying(false);
       }
-    };
+    });
 
     return () => {
       clearTimeout(syncTimeout);
       window.removeEventListener('click', interactionHandler);
-      channel.close();
+      unsubscribe();
     };
-  }, [fetchData, currentLocation, role]);
+  }, [fetchData, currentLocation, role, isRadioPlaying]);
 
-  // Broadcast Admin Actions
-  useEffect(() => {
-    if (role === UserRole.ADMIN) {
-      const channel = new BroadcastChannel('ndr_radio_sync');
-      if (isRadioPlaying && activeTrackId) {
-        channel.postMessage({
-          type: 'PLAY_TRACK',
-          trackId: activeTrackId,
-          trackUrl: activeTrackUrl,
-          trackName: currentTrackName
-        });
-      } else if (!isRadioPlaying) {
-        channel.postMessage({ type: 'PAUSE' });
-      }
-      return () => channel.close();
-    }
-  }, [role, isRadioPlaying, activeTrackId, activeTrackUrl, currentTrackName]);
+  // Broadcast Admin Actions (AdminView handles the detailed updates now)
+  // We keep this simple effect just for safety if needed, but AdminView drives the bus.
 
   const handlePlayNext = useCallback(async () => {
-    // 1. Play Jingle (Copyright Protection / Branding)
-    // We play this locally before transitioning to the next global track.
+    // 1. Play Jingle locally
     try {
       const jingleIdx = Math.random() > 0.5 ? 1 : 2;
       const audio = await getJingleAudio(jingleIdx === 1 ? JINGLE_1 : JINGLE_2);
@@ -267,9 +261,13 @@ const App: React.FC = () => {
     }
 
     // 2. Global Sync (Strict Mode)
-    // After jingle, we snap to what the "Global Station" is playing right now.
-    syncToGlobalTime();
-  }, [audioPlaylist]);
+    // We rely on the playlist logic, but this func is mostly for "Auto Next".
+    // In Realtime Mode, the Admin's "Next" button drives the change.
+    // Listeners just wait for the update.
+    if (role === UserRole.ADMIN) {
+      // Logic moved to AdminView mostly, but good to keep basic next logic here if needed
+    }
+  }, [audioPlaylist, role]);
 
   const handlePlayAll = () => {
     setHasInteracted(true);
@@ -303,35 +301,6 @@ const App: React.FC = () => {
     if (audio) await playRawPcm(audio, 'jingle');
   };
 
-  /**
-   * GLOBAL SYNC SYSTEM (Simulated Live Radio)
-   * This forces all listeners to hear the same track at the same time based on Server Time (UTC).
-   * No database required.
-   */
-  const syncToGlobalTime = () => {
-    if (audioPlaylist.length === 0) return;
-
-    // For Global Uniformity:
-    // We assign a 3-minute slot to each track based on UTC time.
-    // This ensures everyone is on the same track index at the same time.
-    const SLOT_DURATION = 3 * 60 * 1000; // 3 Minutes
-    const currentSlot = Math.floor(Date.now() / SLOT_DURATION);
-
-    // Deterministic Index
-    const trackIndex = currentSlot % audioPlaylist.length;
-
-    const track = audioPlaylist[trackIndex];
-    if (track) {
-      console.log(`Global Sync: Cueing track #${trackIndex} for ${currentLocation}`);
-      setActiveTrackId(track.id);
-      setActiveTrackUrl(track.url);
-      setCurrentTrackName(cleanTrackName(track.name));
-      // NO AUTO-PLAY: User request. Listener must click Play.
-      setIsRadioPlaying(false);
-    }
-  };
-
-
   return (
     <div className="min-h-[100dvh] bg-white text-[#008751] flex flex-col w-full relative overflow-x-hidden">
       <header className="p-2 sticky top-0 z-40 bg-white/90 backdrop-blur-md flex justify-between items-center border-b border-green-50 shadow-sm">
@@ -363,11 +332,8 @@ const App: React.FC = () => {
                 setHasInteracted(true);
                 if (aiAudioContextRef.current) aiAudioContextRef.current.resume();
 
-                // AUTOMATIC PLAYBACK (Global Radio Mode)
-                // Instead of waiting for manual play, we jump straight into the "Live" stream
-                // based on the global time calculation.
-                syncToGlobalTime();
-
+                // Initial Play is Manual
+                // But we fetch the latest state from cloud immediately in useEffect
                 scanNigerianNewspapers(currentLocation).then(fetchData);
               }}
               className="w-full bg-[#008751] text-white py-4 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-green-700 transition-all shadow-lg active:scale-95"
