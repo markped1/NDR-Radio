@@ -114,7 +114,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     await realtimeService.updateStation({
       is_playing: newState,
       track_id: newState ? (mediaList.find(m => m.name === currentTrackName)?.id || '0') : '',
-      track_url: '', // We don't verify URL here, listener finds it by name/id
       track_name: currentTrackName,
       started_at: Date.now(),
       updated_at: Date.now()
@@ -128,7 +127,6 @@ const AdminView: React.FC<AdminViewProps> = ({
     await realtimeService.updateStation({
       is_playing: true,
       track_id: track.id,
-      track_url: track.url || '',
       track_name: track.name,
       started_at: Date.now(),
       updated_at: Date.now()

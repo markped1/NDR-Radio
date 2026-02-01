@@ -1,6 +1,7 @@
 
 import React, { useState, useRef, useEffect } from 'react';
 import { DEFAULT_STREAM_URL } from '../constants';
+import { UserRole } from '../types';
 import Logo from './Logo';
 
 interface RadioPlayerProps {
@@ -10,6 +11,7 @@ interface RadioPlayerProps {
   forcePlaying?: boolean;
   onTrackEnded?: () => void;
   isAdmin?: boolean;
+  role?: UserRole;
   isDucking?: boolean;
 }
 
@@ -19,6 +21,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   currentTrackName = 'Live Stream',
   forcePlaying = false,
   onTrackEnded,
+  role = UserRole.LISTENER,
   isDucking = false
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);

@@ -220,23 +220,40 @@ const App: React.FC = () => {
 
     // REAL-TIME CLOUD SYNC
     const unsubscribe = realtimeService.subscribeToStation((state) => {
-      // If I am the Admin, I ignore updates to avoid loops
+      // If I am the Admin, I ignore updates to avoid loops or cross-admin contamination
       if (role === UserRole.ADMIN) return;
 
-      console.log("Cloud Update:", state);
+      console.log("Cloud Update Received:", state);
 
       if (state.is_playing && state.track_name) {
-        const track = playlistRef.current.find(t => t.name === state.track_name);
+        // IDENTITY-BASED MATCHING: Find the track in our local list by name or ID
+        // This avoids trying to play the Admin's local blob URL which will fail on other devices.
+        const track = playlistRef.current.find(t =>
+          t.id === state.track_id ||
+          t.name === state.track_name
+        );
 
         if (track) {
+          console.log("Matched local track:", track.name);
           setActiveTrackId(track.id);
           setActiveTrackUrl(track.url);
           setCurrentTrackName(cleanTrackName(track.name));
+        } else if (state.track_url && !state.track_url.startsWith('blob:')) {
+          // Fallback to the cloud URL if it's a real URL (e.g. internet stream)
+          console.log("Using remote URL fallback:", state.track_url);
+          setActiveTrackUrl(state.track_url);
+          setCurrentTrackName(cleanTrackName(state.track_name));
+        } else {
+          // Last resort fallback: Play the default stream if the track isn't found locally
+          console.log("Track not found locally, falling back to default stream");
+          setCurrentTrackName(`Live: ${cleanTrackName(state.track_name)} (Stream)`);
+        }
 
-          // CRITICAL FIX: Only auto-play if the listener is ALREADY actively listening.
-          if (isRadioPlayingRef.current) {
-            setIsRadioPlaying(true);
-          }
+        // Only set playing to true if we were already in "listening" mode (interaction happened)
+        // or if we want to snap to the admin's state. 
+        // Note: isRadioPlayingRef.current tracks our local intention.
+        if (isRadioPlayingRef.current) {
+          setIsRadioPlaying(true);
         }
       } else {
         // If Admin stops, we stop everyone
@@ -350,12 +367,23 @@ const App: React.FC = () => {
 
       <main className="flex-grow pt-1 px-1.5">
         <RadioPlayer
-          onStateChange={setIsRadioPlaying}
+          onStateChange={(playing) => {
+            setIsRadioPlaying(playing);
+            // ONLY Admin can broadcast state changes back to Supabase
+            if (role === UserRole.ADMIN) {
+              realtimeService.updateStation({
+                is_playing: playing,
+                track_name: currentTrackName,
+                updated_at: Date.now()
+              });
+            }
+          }}
           activeTrackUrl={activeTrackUrl}
           currentTrackName={currentTrackName}
           forcePlaying={isRadioPlaying}
           onTrackEnded={handlePlayNext}
           isDucking={isDucking}
+          role={role}
         />
 
         {role === UserRole.LISTENER ? (
