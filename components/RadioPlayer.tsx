@@ -212,6 +212,13 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
           />
           <i className="fas fa-volume-up text-green-600 text-[8px]"></i>
         </div>
+
+        {/* Debug: Fallback Warning */}
+        {isPlaying && activeTrackUrl === DEFAULT_STREAM_URL && (
+          <p className="text-[7px] text-red-500 font-bold bg-white/80 px-2 py-1 rounded-full mt-2 animate-pulse">
+            Offline: Using Internet Stream (Might Fail)
+          </p>
+        )}
       </div>
     </div>
   );

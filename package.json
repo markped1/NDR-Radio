@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
-    "build": "vite build",
+    "build": "npm run generate-playlist && vite build",
     "preview": "vite preview",
     "generate-playlist": "node scripts/generate_playlist.js"
   },
