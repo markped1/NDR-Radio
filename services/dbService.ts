@@ -89,6 +89,11 @@ class DBService {
     localStorage.setItem(this.STORAGE_KEYS.LAST_SYNC, Date.now().toString());
   }
 
+  // Alias for compatibility
+  async setNews(news: NewsItem[]): Promise<void> {
+    return this.saveNews(news);
+  }
+
   async getLastSyncTime(): Promise<number> {
     const time = localStorage.getItem(this.STORAGE_KEYS.LAST_SYNC);
     return time ? parseInt(time, 10) : 0;

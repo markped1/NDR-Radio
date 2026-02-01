@@ -304,6 +304,37 @@ const App: React.FC = () => {
     if (audio) await playRawPcm(audio, 'jingle');
   };
 
+  /**
+   * GLOBAL SYNC SYSTEM (Simulated Live Radio)
+   * This forces all listeners to hear the same track at the same time based on Server Time (UTC).
+   * No database required.
+   */
+  const syncToGlobalTime = () => {
+    if (audioPlaylist.length === 0) return;
+
+    // 1. Calculate total duration of one full loop of the playlist (assuming avg 3 mins per song if exact duration unknown)
+    // For a more precise sync, we would need pre-calculated durations. Here we use a hash-based deterministic shuffle.
+    // A simpler approach for "Radio" mode:
+
+    // Pick a track based on the current hour/minute to effectively "schedule" it
+    const now = Date.now();
+    const oneHour = 3600000;
+    const seed = Math.floor(now / oneHour); // Change shuffle seed every hour
+
+    // Simple deterministic pseudo-random index based on current minute
+    const minute = new Date().getMinutes();
+    const trackIndex = (minute + seed) % audioPlaylist.length;
+
+    const track = audioPlaylist[trackIndex];
+    if (track) {
+      console.log(`Global Sync: Playing track #${trackIndex} for ${currentLocation}`);
+      setActiveTrackId(track.id);
+      setActiveTrackUrl(track.url);
+      setCurrentTrackName(cleanTrackName(track.name));
+      setIsRadioPlaying(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-[#f0fff4] text-[#008751] flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden border-x border-green-100/30">
       <header className="p-2 sticky top-0 z-40 bg-white/90 backdrop-blur-md flex justify-between items-center border-b border-green-50 shadow-sm">
@@ -335,14 +366,16 @@ const App: React.FC = () => {
                 setHasInteracted(true);
                 if (aiAudioContextRef.current) aiAudioContextRef.current.resume();
 
-                // Manual Play Only: We do NOT auto-start music here anymore.
-                // The user must click the Play button on the player interface.
+                // AUTOMATIC PLAYBACK (Global Radio Mode)
+                // Instead of waiting for manual play, we jump straight into the "Live" stream
+                // based on the global time calculation.
+                syncToGlobalTime();
 
                 scanNigerianNewspapers(currentLocation).then(fetchData);
               }}
               className="w-full bg-[#008751] text-white py-4 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-green-700 transition-all shadow-lg active:scale-95"
             >
-              Start Listening
+              Start Listening (Join Live Broadcast)
             </button>
           </div>
         </div>

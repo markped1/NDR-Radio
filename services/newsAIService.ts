@@ -111,7 +111,7 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
         await dbService.setNews(offlineNews);
 
         return {
-          news: offlineNews,
+          news: offlineNews as NewsItem[],
           weather: { condition: 'Fair', temp: '25°C', location: 'Lagos' }
         };
       }
