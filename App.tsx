@@ -37,6 +37,10 @@ const App: React.FC = () => {
   const mediaUrlCache = useRef<Map<string, string>>(new Map());
   const playlistRef = useRef<MediaFile[]>([]);
 
+  // Ref to track playing state without triggering re-renders of the subscription effect
+  const isRadioPlayingRef = useRef(isRadioPlaying);
+  useEffect(() => { isRadioPlayingRef.current = isRadioPlaying; }, [isRadioPlaying]);
+
   useEffect(() => {
     playlistRef.current = audioPlaylist;
     // Try to get precise location for weather
@@ -230,7 +234,7 @@ const App: React.FC = () => {
           setCurrentTrackName(cleanTrackName(track.name));
 
           // CRITICAL FIX: Only auto-play if the listener is ALREADY actively listening.
-          if (isRadioPlaying) {
+          if (isRadioPlayingRef.current) {
             setIsRadioPlaying(true);
           }
         }
@@ -245,7 +249,7 @@ const App: React.FC = () => {
       window.removeEventListener('click', interactionHandler);
       unsubscribe();
     };
-  }, [fetchData, currentLocation, role, isRadioPlaying]);
+  }, [fetchData, currentLocation, role]); // REMOVED isRadioPlaying to prevent infinite loop
 
   // Broadcast Admin Actions (AdminView handles the detailed updates now)
   // We keep this simple effect just for safety if needed, but AdminView drives the bus.
