@@ -33,7 +33,8 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
     4. WEATHER: Current temp and sky conditions in ${locationLabel}.
     
     Return a JSON object with:
-    - 'news': Array of objects with 'title', 'content', 'category' (Detailed content 60-80 words).
+    - 'news': Array of objects with 'title', 'content', 'category'.
+       IMPORTANT: 'content' must be DETAILED and COMPREHENSIVE (150-200 words per item) for a full radio bulletin.
     - 'headlines': Array of short strings (headlines only).
     - 'weather': Object with 'condition', 'temp', 'location'.`;
 
