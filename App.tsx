@@ -420,6 +420,7 @@ const App: React.FC = () => {
                   startTime={startTime}
                   isDucking={isDucking}
                   role={role}
+                  isAdmin={true}
                   visualOnly={false}
                 />
               }

@@ -264,9 +264,9 @@ const AdminView: React.FC<AdminViewProps> = ({
               </button>
               <button
                 onClick={onPlayAll}
-                className="flex-3 px-6 py-3 bg-green-950 text-white rounded-xl text-[8px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
+                className="flex-[3] px-6 py-3 bg-green-950 text-white rounded-xl text-[8px] font-black uppercase tracking-widest shadow-lg active:scale-95 transition-all"
               >
-                <i className="fas fa-play-circle mr-2"></i> Master Play
+                <i className="fas fa-play-circle mr-2"></i> Master
               </button>
             </div>
           </div>
@@ -435,7 +435,7 @@ const AdminView: React.FC<AdminViewProps> = ({
           </div>
         </div>
       </section>
-    </div >
+    </div>
   );
 };
 
