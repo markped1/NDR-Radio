@@ -88,6 +88,23 @@ const ListenerView: React.FC<ListenerViewProps> = ({
 
   const currentAd = sponsoredVideos[adIndex];
 
+  const renderTicker = () => {
+    const defaultText = "BRINGING YOU NEWS, CULTURE, AND MUSIC FROM THE NIGERIAN DIASPORA WORLDWIDE • STREAMING LIVE • NIGERIA DIASPORA RADIO • THE VOICE OF NIGERIA ABROAD";
+    const tickerText = news.length > 0
+      ? news.map(n => n.title.toUpperCase()).join(' • ')
+      : defaultText;
+
+    return (
+      <div className="bg-[#008751] py-3 shadow-lg overflow-hidden relative border-y border-white/10">
+        <div className="flex whitespace-nowrap animate-marquee">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/90 px-4">
+            {tickerText} • {tickerText}
+          </span>
+        </div>
+      </div>
+    );
+  };
+
   const renderHome = () => (
     <div className="space-y-8 pb-10">
       {/* 1. HERO SECTION & CONTROLS */}
@@ -318,6 +335,8 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         </div>
       </div>
 
+      {renderTicker()}
+
       <div className="flex-grow">
         {activeTab === 'home' && renderHome()}
         {activeTab === 'news' && renderNews()}
@@ -329,6 +348,13 @@ const ListenerView: React.FC<ListenerViewProps> = ({
       <footer className="px-4 py-12 text-center opacity-20">
         <p className="text-[8px] font-black uppercase tracking-[0.3em]">{APP_NAME} &bull; {DESIGNER_NAME}</p>
       </footer>
+
+      <style dangerouslySetInnerHTML={{
+        __html: `
+        @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
+        .animate-marquee { display: inline-flex; animation: marquee 60s linear infinite; }
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+      `}} />
     </div>
   );
 };
