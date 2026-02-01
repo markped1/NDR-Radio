@@ -282,14 +282,33 @@ const App: React.FC = () => {
       console.warn("Jingle failed", e);
     }
 
-    // 2. Global Sync (Strict Mode)
-    // We rely on the playlist logic, but this func is mostly for "Auto Next".
-    // In Realtime Mode, the Admin's "Next" button drives the change.
-    // Listeners just wait for the update.
-    if (role === UserRole.ADMIN) {
-      // Logic moved to AdminView mostly, but good to keep basic next logic here if needed
+    if (audioPlaylist.length === 0) return;
+
+    let nextIndex = 0;
+    if (isShuffle) {
+      nextIndex = Math.floor(Math.random() * audioPlaylist.length);
+    } else {
+      const currentIndex = audioPlaylist.findIndex(t => t.id === activeTrackId);
+      nextIndex = (currentIndex + 1) % audioPlaylist.length;
     }
-  }, [audioPlaylist, role]);
+
+    const track = audioPlaylist[nextIndex];
+    setActiveTrackId(track.id);
+    setActiveTrackUrl(track.url);
+    setCurrentTrackName(cleanTrackName(track.name));
+    setIsRadioPlaying(true);
+  }, [audioPlaylist, role, isShuffle, activeTrackId, playRawPcm]);
+
+  const handlePlayPrevious = useCallback(() => {
+    if (audioPlaylist.length === 0) return;
+    const currentIndex = audioPlaylist.findIndex(t => t.id === activeTrackId);
+    const prevIndex = currentIndex <= 0 ? audioPlaylist.length - 1 : currentIndex - 1;
+    const track = audioPlaylist[prevIndex];
+    setActiveTrackId(track.id);
+    setActiveTrackUrl(track.url);
+    setCurrentTrackName(cleanTrackName(track.name));
+    setIsRadioPlaying(true);
+  }, [audioPlaylist, activeTrackId]);
 
   const handlePlayAll = () => {
     setHasInteracted(true);
@@ -373,7 +392,7 @@ const App: React.FC = () => {
               onRefreshData={fetchData} logs={logs} onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
               isRadioPlaying={isRadioPlaying} onToggleRadio={() => setIsRadioPlaying(!isRadioPlaying)}
               currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
-              onPlayAll={handlePlayAll} onSkipNext={handlePlayNext}
+              onPlayAll={handlePlayAll} onSkipNext={handlePlayNext} onSkipBack={handlePlayPrevious}
               onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
               news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
               currentPosition={currentPosition}

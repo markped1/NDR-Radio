@@ -15,6 +15,7 @@ interface AdminViewProps {
   onToggleShuffle: () => void;
   onPlayAll: () => void;
   onSkipNext: () => void;
+  onSkipBack: () => void;
   onPushBroadcast?: (voiceText: string) => Promise<void>;
   onPlayJingle?: (index: 1 | 2) => Promise<void>;
   news?: NewsItem[];
@@ -34,7 +35,11 @@ const AdminView: React.FC<AdminViewProps> = ({
   isRadioPlaying,
   onToggleRadio,
   currentTrackName,
+  isShuffle,
+  onToggleShuffle,
   onPlayAll,
+  onSkipNext,
+  onSkipBack,
   onPushBroadcast,
   onPlayJingle,
   news = [],
@@ -50,6 +55,7 @@ const AdminView: React.FC<AdminViewProps> = ({
   const [mediaList, setMediaList] = useState<MediaFile[]>([]);
   const [reports, setReports] = useState<ListenerReport[]>([]);
   const [nextSyncIn, setNextSyncIn] = useState<string>('');
+  const [currentVideoIndex, setCurrentVideoIndex] = useState(0);
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const folderInputRef = useRef<HTMLInputElement>(null);
@@ -75,6 +81,18 @@ const AdminView: React.FC<AdminViewProps> = ({
       clearInterval(countdownInterval);
     };
   }, []);
+
+  // Video Slideshow Cycle (30 Seconds)
+  useEffect(() => {
+    const videos = mediaList.filter(m => m.type === 'video');
+    if (videos.length === 0) return;
+
+    const timer = setInterval(() => {
+      setCurrentVideoIndex(prev => (prev + 1) % videos.length);
+    }, 30000);
+
+    return () => clearInterval(timer);
+  }, [mediaList]);
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
@@ -191,6 +209,65 @@ const AdminView: React.FC<AdminViewProps> = ({
               });
             }}
           />
+        </div>
+
+        {/* MASTER CONTROL BAR (Skip, Shuffle, Play All) */}
+        <div className="bg-white p-4 rounded-3xl border border-green-100 shadow-lg flex items-center justify-between">
+          <div className="flex items-center space-x-2">
+            <button onClick={onSkipBack} className="w-10 h-10 rounded-full bg-green-50 text-green-700 flex items-center justify-center hover:bg-green-100 active:scale-95 transition-all">
+              <i className="fas fa-backward-step text-xs"></i>
+            </button>
+            <button onClick={handleToggleRadio} className="w-12 h-12 rounded-full bg-[#008751] text-white flex items-center justify-center shadow-md active:scale-95 transition-all">
+              <i className={`fas fa-${isRadioPlaying ? 'pause' : 'play'} text-sm ${!isRadioPlaying ? 'ml-1' : ''}`}></i>
+            </button>
+            <button onClick={onSkipNext} className="w-10 h-10 rounded-full bg-green-50 text-green-700 flex items-center justify-center hover:bg-green-100 active:scale-95 transition-all">
+              <i className="fas fa-forward-step text-xs"></i>
+            </button>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <button
+              onClick={onToggleShuffle}
+              className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${isShuffle ? 'bg-amber-100 text-amber-700 shadow-inner' : 'bg-gray-50 text-gray-400'}`}
+            >
+              <i className="fas fa-shuffle text-xs"></i>
+            </button>
+            <button
+              onClick={onPlayAll}
+              className="px-4 py-2.5 bg-green-950 text-white rounded-2xl text-[8px] font-black uppercase tracking-widest shadow-xl active:scale-95 transition-all flex items-center space-x-2"
+            >
+              <i className="fas fa-play-circle text-[10px]"></i>
+              <span>Master Play</span>
+            </button>
+          </div>
+        </div>
+
+        {/* ON-AIR VIDEO SLIDESHOW */}
+        <div className="space-y-3">
+          <header className="px-1">
+            <h3 className="text-[10px] font-black uppercase tracking-widest text-[#008751]/60">On-Air Media Cycle (30s)</h3>
+          </header>
+          <div className="relative aspect-video rounded-[2.5rem] overflow-hidden shadow-2xl bg-black border-4 border-white">
+            {mediaList.filter(m => m.type === 'video').length > 0 ? (
+              <>
+                <video
+                  key={mediaList.filter(m => m.type === 'video')[currentVideoIndex]?.url}
+                  src={mediaList.filter(m => m.type === 'video')[currentVideoIndex]?.url}
+                  autoPlay muted playsInline
+                  className="w-full h-full object-contain"
+                />
+                <div className="absolute top-4 left-4 flex items-center space-x-2 bg-black/40 backdrop-blur-md px-2 py-1 rounded-md">
+                  <div className="w-1.5 h-1.5 bg-green-400 rounded-full animate-pulse"></div>
+                  <span className="text-[7px] font-black text-white uppercase tracking-widest">Cycling: Ad {currentVideoIndex + 1}</span>
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-full flex flex-col items-center justify-center text-white/20 space-y-2">
+                <i className="fas fa-film text-3xl"></i>
+                <span className="text-[9px] font-black uppercase tracking-widest">No Videos in Library</span>
+              </div>
+            )}
+          </div>
         </div>
 
         <div className="grid grid-cols-2 gap-3">
