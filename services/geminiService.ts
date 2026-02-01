@@ -27,7 +27,7 @@ export async function generateText(prompt: string, systemInstruction: string) {
   return withRetry(async () => {
     const ai = getAIClient();
     const response = await ai.models.generateContent({
-      model: 'gemini-3-flash-preview',
+      model: 'gemini-2.0-flash',
       contents: prompt,
       config: {
         systemInstruction,

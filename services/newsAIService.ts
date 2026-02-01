@@ -23,6 +23,7 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
 
   return withRetry(async () => {
     const ai = getAIClient();
+    console.log("Triggering live news scan via Gemini 2.0 Flash...");
     const prompt = `Search for the most CURRENT breaking news (strictly last 24 hours) from global and Nigerian sources.
     ALSO, find the current weather conditions for ${locationLabel}.
     
@@ -40,7 +41,7 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-3-flash-preview",
+        model: "gemini-2.0-flash",
         contents: prompt,
         config: {
           tools: [{ googleSearch: {} }],
@@ -109,7 +110,7 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
         }];
 
         // IMPORTANT: Save this fallback to DB so fetchData() sees it!
-        await dbService.setNews(offlineNews);
+        await dbService.setNews(offlineNews as NewsItem[]);
 
         return {
           news: offlineNews as NewsItem[],

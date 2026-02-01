@@ -35,9 +35,9 @@ export async function getDetailedBulletinAudio(params: {
   return withRetry(async () => {
     const ai = getAIClient();
     const { location, localTime, newsItems, weather, isBrief } = params;
-    
+
     let fullScript = "";
-    
+
     if (isBrief) {
       // Half-hour Headline Update
       fullScript = `This is a 60-second NDR Headline Update. I am ${NEWSCASTER_NAME}. `;
@@ -52,7 +52,7 @@ export async function getDetailedBulletinAudio(params: {
     } else {
       // Top of the Hour Detailed Bulletin
       fullScript = `This is ${NEWSCASTER_NAME} with the ${APP_NAME} Detailed News Bulletin. The time is ${localTime} in ${location}. `;
-      
+
       if (weather) {
         fullScript += `Taking a look at the weather, in ${weather.location} we are seeing ${weather.condition} with a temperature of ${weather.temp}. `;
       }
@@ -61,19 +61,19 @@ export async function getDetailedBulletinAudio(params: {
       newsItems.forEach((n, i) => {
         fullScript += `${n.title}. ${n.content} `;
       });
-      
+
       fullScript += `That is the detailed news and weather for now. I am ${NEWSCASTER_NAME}. Stay tuned for more sounds of home on NDR.`;
     }
 
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-2.0-flash",
         contents: [{ parts: [{ text: fullScript }] }],
         config: {
           responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
-              prebuiltVoiceConfig: { voiceName: 'Kore' }, 
+              prebuiltVoiceConfig: { voiceName: 'Kore' },
             },
           },
         },
@@ -94,10 +94,10 @@ export async function getNewsAudio(newsContent: string): Promise<Uint8Array | nu
     const ai = getAIClient();
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-2.0-flash",
         contents: [{ parts: [{ text: newsContent }] }],
         config: {
-          responseModalalities: [Modality.AUDIO],
+          responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName: 'Kore' },
@@ -125,10 +125,10 @@ export async function getJingleAudio(jingleText: string): Promise<Uint8Array | n
     const ai = getAIClient();
     try {
       const response = await ai.models.generateContent({
-        model: "gemini-2.5-flash-preview-tts",
+        model: "gemini-2.0-flash",
         contents: [{ parts: [{ text: jingleText }] }],
         config: {
-          responseModalalities: [Modality.AUDIO],
+          responseModalities: [Modality.AUDIO],
           speechConfig: {
             voiceConfig: {
               prebuiltVoiceConfig: { voiceName: 'Kore' },
