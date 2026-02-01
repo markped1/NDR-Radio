@@ -247,16 +247,22 @@ const App: React.FC = () => {
           setActiveTrackUrl(track.url);
           setCurrentTrackName(cleanTrackName(track.name));
 
-          const offset = Math.max(0, (Date.now() - state.started_at) / 1000);
-          setStartTime(offset);
+          // Only apply offset if started_at is within a reasonable range (last 2 hours)
+          const now = Date.now();
+          if (state.started_at > 0 && (now - state.started_at) < 7200000) {
+            const offset = Math.max(0, (now - state.started_at) / 1000);
+            setStartTime(offset);
+          } else {
+            setStartTime(0);
+          }
         } else if (state.track_url && !state.track_url.startsWith('blob:')) {
           setActiveTrackUrl(state.track_url);
           setCurrentTrackName(cleanTrackName(state.track_name));
+          setStartTime(0);
         }
 
-        if (isRadioPlayingRef.current) {
-          setIsRadioPlaying(true);
-        }
+        // Always sync the playing state for listeners
+        setIsRadioPlaying(true);
       } else {
         setIsRadioPlaying(false);
       }
@@ -297,6 +303,16 @@ const App: React.FC = () => {
     setActiveTrackUrl(track.url);
     setCurrentTrackName(cleanTrackName(track.name));
     setIsRadioPlaying(true);
+
+    if (role === UserRole.ADMIN) {
+      realtimeService.updateStation({
+        is_playing: true,
+        track_id: track.id,
+        track_name: track.name,
+        started_at: Date.now(),
+        updated_at: Date.now()
+      });
+    }
   }, [audioPlaylist, role, isShuffle, activeTrackId, playRawPcm]);
 
   const handlePlayPrevious = useCallback(() => {
@@ -308,7 +324,17 @@ const App: React.FC = () => {
     setActiveTrackUrl(track.url);
     setCurrentTrackName(cleanTrackName(track.name));
     setIsRadioPlaying(true);
-  }, [audioPlaylist, activeTrackId]);
+
+    if (role === UserRole.ADMIN) {
+      realtimeService.updateStation({
+        is_playing: true,
+        track_id: track.id,
+        track_name: track.name,
+        started_at: Date.now(),
+        updated_at: Date.now()
+      });
+    }
+  }, [audioPlaylist, activeTrackId, role]);
 
   const handlePlayAll = () => {
     setHasInteracted(true);
@@ -321,6 +347,16 @@ const App: React.FC = () => {
     setActiveTrackUrl(track.url);
     setCurrentTrackName(cleanTrackName(track.name));
     setIsRadioPlaying(true);
+
+    if (role === UserRole.ADMIN) {
+      realtimeService.updateStation({
+        is_playing: true,
+        track_id: track.id,
+        track_name: track.name,
+        started_at: Date.now(),
+        updated_at: Date.now()
+      });
+    }
   };
 
   const handlePushBroadcast = async (voiceText: string) => {
@@ -389,7 +425,23 @@ const App: React.FC = () => {
         {role === UserRole.ADMIN ? (
           <div className="p-4">
             <AdminView
-              onRefreshData={fetchData} logs={logs} onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
+              onRefreshData={fetchData} logs={logs}
+              onPlayTrack={(t) => {
+                setHasInteracted(true);
+                setActiveTrackId(t.id);
+                setActiveTrackUrl(t.url);
+                setCurrentTrackName(cleanTrackName(t.name));
+                setIsRadioPlaying(true);
+                if (role === UserRole.ADMIN) {
+                  realtimeService.updateStation({
+                    is_playing: true,
+                    track_id: t.id,
+                    track_name: t.name,
+                    started_at: Date.now(),
+                    updated_at: Date.now()
+                  });
+                }
+              }}
               isRadioPlaying={isRadioPlaying} onToggleRadio={() => setIsRadioPlaying(!isRadioPlaying)}
               currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
               onPlayAll={handlePlayAll} onSkipNext={handlePlayNext} onSkipBack={handlePlayPrevious}
