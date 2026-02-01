@@ -91,7 +91,7 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   const renderTicker = () => {
     const defaultText = "BRINGING YOU NEWS, CULTURE, AND MUSIC FROM THE NIGERIAN DIASPORA WORLDWIDE • STREAMING LIVE • NIGERIA DIASPORA RADIO • THE VOICE OF NIGERIA ABROAD";
     const tickerText = news.length > 0
-      ? news.map(n => n.title.toUpperCase()).join(' • ')
+      ? `BREAKING NEWS: ${news.map(n => n.title.toUpperCase()).join(' • ')}`
       : defaultText;
 
     return (
@@ -352,7 +352,7 @@ const ListenerView: React.FC<ListenerViewProps> = ({
       <style dangerouslySetInnerHTML={{
         __html: `
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        .animate-marquee { display: inline-flex; animation: marquee 60s linear infinite; }
+        .animate-marquee { display: inline-flex; animation: marquee 30s linear infinite; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
       `}} />
     </div>
