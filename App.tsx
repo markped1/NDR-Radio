@@ -330,86 +330,86 @@ const App: React.FC = () => {
       setIsRadioPlaying(false);
     }
   };
-};
 
-return (
-  <div className="min-h-screen bg-[#f0fff4] text-[#008751] flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden border-x border-green-100/30">
-    <header className="p-2 sticky top-0 z-40 bg-white/90 backdrop-blur-md flex justify-between items-center border-b border-green-50 shadow-sm">
-      <div className="flex flex-col">
-        <h1 className="text-[11px] font-black italic uppercase leading-none text-green-950">{APP_NAME}</h1>
-        <p className="text-[6px] text-green-950/60 font-black uppercase mt-0.5 tracking-widest">Designed by {DESIGNER_NAME}</p>
-      </div>
-      <div className="flex items-center space-x-2">
-        {isDucking && <span className="text-[7px] font-black uppercase text-red-500 animate-pulse bg-red-50 px-1 rounded shadow-sm border border-red-100">Live Broadcast</span>}
-        <button
-          onClick={role === UserRole.ADMIN ? () => setRole(UserRole.LISTENER) : () => setShowAuth(true)}
-          className="px-2 py-0.5 rounded-full border border-green-950 text-[7px] font-black uppercase text-green-950 hover:bg-green-50 transition-colors"
-        >
-          {role === UserRole.ADMIN ? 'Exit Admin' : 'Admin Login'}
-        </button>
-      </div>
-    </header>
 
-    {!hasInteracted && (
-      <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-scale-in">
-        <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
-          <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
-            <i className="fas fa-play text-2xl text-[#008751]"></i>
-          </div>
-          <h2 className="text-xl font-black text-green-950 uppercase">{APP_NAME}</h2>
-          <p className="text-xs text-green-800/80 font-medium">Click below to tune in to the live broadcast and enable AI audio features.</p>
+  return (
+    <div className="min-h-screen bg-[#f0fff4] text-[#008751] flex flex-col max-w-md mx-auto relative shadow-2xl overflow-x-hidden border-x border-green-100/30">
+      <header className="p-2 sticky top-0 z-40 bg-white/90 backdrop-blur-md flex justify-between items-center border-b border-green-50 shadow-sm">
+        <div className="flex flex-col">
+          <h1 className="text-[11px] font-black italic uppercase leading-none text-green-950">{APP_NAME}</h1>
+          <p className="text-[6px] text-green-950/60 font-black uppercase mt-0.5 tracking-widest">Designed by {DESIGNER_NAME}</p>
+        </div>
+        <div className="flex items-center space-x-2">
+          {isDucking && <span className="text-[7px] font-black uppercase text-red-500 animate-pulse bg-red-50 px-1 rounded shadow-sm border border-red-100">Live Broadcast</span>}
           <button
-            onClick={() => {
-              setHasInteracted(true);
-              if (aiAudioContextRef.current) aiAudioContextRef.current.resume();
-
-              // AUTOMATIC PLAYBACK (Global Radio Mode)
-              // Instead of waiting for manual play, we jump straight into the "Live" stream
-              // based on the global time calculation.
-              syncToGlobalTime();
-
-              scanNigerianNewspapers(currentLocation).then(fetchData);
-            }}
-            className="w-full bg-[#008751] text-white py-4 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-green-700 transition-all shadow-lg active:scale-95"
+            onClick={role === UserRole.ADMIN ? () => setRole(UserRole.LISTENER) : () => setShowAuth(true)}
+            className="px-2 py-0.5 rounded-full border border-green-950 text-[7px] font-black uppercase text-green-950 hover:bg-green-50 transition-colors"
           >
-            Start Listening (Join Live Broadcast)
+            {role === UserRole.ADMIN ? 'Exit Admin' : 'Admin Login'}
           </button>
         </div>
-      </div>
-    )}
+      </header>
 
-    <main className="flex-grow pt-1 px-1.5">
-      <RadioPlayer
-        onStateChange={setIsRadioPlaying}
-        activeTrackUrl={activeTrackUrl}
-        currentTrackName={currentTrackName}
-        forcePlaying={isRadioPlaying}
-        onTrackEnded={handlePlayNext}
-        isDucking={isDucking}
-      />
+      {!hasInteracted && (
+        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-scale-in">
+          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
+            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
+              <i className="fas fa-play text-2xl text-[#008751]"></i>
+            </div>
+            <h2 className="text-xl font-black text-green-950 uppercase">{APP_NAME}</h2>
+            <p className="text-xs text-green-800/80 font-medium">Click below to tune in to the live broadcast and enable AI audio features.</p>
+            <button
+              onClick={() => {
+                setHasInteracted(true);
+                if (aiAudioContextRef.current) aiAudioContextRef.current.resume();
 
-      {role === UserRole.LISTENER ? (
-        <ListenerView
-          news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
-          sponsoredVideos={sponsoredMedia} activeTrackUrl={activeTrackUrl}
-          currentTrackName={currentTrackName} adminMessages={adminMessages} reports={reports}
-          onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
-        />
-      ) : (
-        <AdminView
-          onRefreshData={fetchData} logs={logs} onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
-          isRadioPlaying={isRadioPlaying} onToggleRadio={() => setIsRadioPlaying(!isRadioPlaying)}
-          currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
-          onPlayAll={handlePlayAll} onSkipNext={handlePlayNext}
-          onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
-          news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
-        />
+                // AUTOMATIC PLAYBACK (Global Radio Mode)
+                // Instead of waiting for manual play, we jump straight into the "Live" stream
+                // based on the global time calculation.
+                syncToGlobalTime();
+
+                scanNigerianNewspapers(currentLocation).then(fetchData);
+              }}
+              className="w-full bg-[#008751] text-white py-4 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-green-700 transition-all shadow-lg active:scale-95"
+            >
+              Start Listening (Join Live Broadcast)
+            </button>
+          </div>
+        </div>
       )}
-    </main>
 
-    {showAuth && <PasswordModal onClose={() => setShowAuth(false)} onSuccess={() => { setRole(UserRole.ADMIN); setShowAuth(false); }} />}
-  </div>
-);
+      <main className="flex-grow pt-1 px-1.5">
+        <RadioPlayer
+          onStateChange={setIsRadioPlaying}
+          activeTrackUrl={activeTrackUrl}
+          currentTrackName={currentTrackName}
+          forcePlaying={isRadioPlaying}
+          onTrackEnded={handlePlayNext}
+          isDucking={isDucking}
+        />
+
+        {role === UserRole.LISTENER ? (
+          <ListenerView
+            news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
+            sponsoredVideos={sponsoredMedia} activeTrackUrl={activeTrackUrl}
+            currentTrackName={currentTrackName} adminMessages={adminMessages} reports={reports}
+            onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
+          />
+        ) : (
+          <AdminView
+            onRefreshData={fetchData} logs={logs} onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
+            isRadioPlaying={isRadioPlaying} onToggleRadio={() => setIsRadioPlaying(!isRadioPlaying)}
+            currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
+            onPlayAll={handlePlayAll} onSkipNext={handlePlayNext}
+            onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
+            news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
+          />
+        )}
+      </main>
+
+      {showAuth && <PasswordModal onClose={() => setShowAuth(false)} onSuccess={() => { setRole(UserRole.ADMIN); setShowAuth(false); }} />}
+    </div>
+  );
 };
 
 export default App;
