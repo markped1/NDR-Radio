@@ -273,6 +273,10 @@ const App: React.FC = () => {
         if (!state.is_playing) {
           setIsRadioPlaying(false);
         }
+
+        if (state.active_tab) {
+          setActiveTab(state.active_tab);
+        }
       } else {
         setIsRadioPlaying(false);
       }
@@ -442,7 +446,7 @@ const App: React.FC = () => {
       )}
 
       {/* 2. MAIN CONTENT AREA */}
-      <main id="main-scroll-container" className="flex-grow overflow-y-auto no-scrollbar relative scroll-smooth bg-[#ecf7f1]">
+      <main id="main-scroll-container" className={`flex-grow overflow-y-auto no-scrollbar relative scroll-smooth bg-[#ecf7f1] ${role === UserRole.LISTENER ? 'pb-24' : ''}`}>
         {role === UserRole.ADMIN ? (
           <div className="p-4">
             <AdminView
@@ -507,6 +511,7 @@ const App: React.FC = () => {
         ) : (
           <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
             <ListenerView
+              activeTab={activeTab}
               news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
               sponsoredVideos={sponsoredMedia} activeTrackUrl={activeTrackUrl}
               currentTrackName={currentTrackName} adminMessages={adminMessages} reports={reports}
@@ -517,64 +522,75 @@ const App: React.FC = () => {
         )}
       </main>
 
-      {/* 3. PERSISTENT MINI PLAYER & NAV BAR (Admin Only) */}
-      {role === UserRole.ADMIN && (
-        <div className="z-40 bg-white/80 backdrop-blur-xl border-t border-green-50/50 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
-          {/* Bottom Navigation */}
-          <nav className="flex justify-around items-center h-16">
-            <NavButton
-              active={false}
-              icon="terminal"
-              label="Command"
-              onClick={() => document.getElementById('admin-command')?.scrollIntoView({ behavior: 'smooth' })}
-            />
-            <NavButton
-              active={false}
-              icon="newspaper"
-              label="News"
-              onClick={() => document.getElementById('admin-news')?.scrollIntoView({ behavior: 'smooth' })}
-            />
-            <NavButton
-              active={false}
-              icon="archive"
-              label="Vault"
-              onClick={() => document.getElementById('admin-media')?.scrollIntoView({ behavior: 'smooth' })}
-            />
-            <NavButton
-              active={false}
-              icon="list-ul"
-              label="Logs"
-              onClick={() => document.getElementById('admin-logs')?.scrollIntoView({ behavior: 'smooth' })}
-            />
-          </nav>
-        </div>
-      )}
-
-      {/* Listener Hidden Engine */}
-      {role === UserRole.LISTENER && (
-        <div className="hidden">
-          <RadioPlayer
-            onStateChange={(playing) => {
-              // Listeners only update local state, never push to cloud
-              setIsRadioPlaying(playing);
+      {/* 3. PERSISTENT MINI PLAYER & NAV BAR */}
+      <div className="fixed bottom-0 left-0 right-0 z-40 bg-white/80 backdrop-blur-xl border-t border-green-50/50 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+        {/* Bottom Navigation */}
+        <nav className="flex justify-around items-center h-16">
+          <NavButton
+            active={activeTab === 'home'}
+            icon="home"
+            label="Home"
+            onClick={() => {
+              setActiveTab('home');
+              if (role === UserRole.ADMIN) realtimeService.updateStation({ active_tab: 'home' });
+              document.getElementById('main-scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' });
             }}
-            activeTrackUrl={activeTrackUrl}
-            currentTrackName={currentTrackName}
-            forcePlaying={isRadioPlaying}
-            onTrackEnded={() => {
-              // Listeners do NOT auto-advance. They wait for Admin's cloud sync.
-              console.log("Track ended for listener, waiting for Admin sync...");
-              setIsRadioPlaying(false);
-            }}
-            onTimeUpdate={setCurrentPosition}
-            onDurationChange={setDuration}
-            startTime={startTime}
-            isDucking={isDucking}
-            role={role}
-            hasInteracted={hasInteracted}
           />
-        </div>
-      )}
+          <NavButton
+            active={activeTab === 'news'}
+            icon="newspaper"
+            label="News"
+            onClick={() => {
+              setActiveTab('news');
+              if (role === UserRole.ADMIN) realtimeService.updateStation({ active_tab: 'news' });
+              document.getElementById('main-scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+          <NavButton
+            active={activeTab === 'radio'}
+            icon="signal"
+            label="Radio"
+            onClick={() => {
+              setActiveTab('radio');
+              if (role === UserRole.ADMIN) realtimeService.updateStation({ active_tab: 'radio' });
+              document.getElementById('main-scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+          <NavButton
+            active={activeTab === 'community'}
+            icon="users"
+            label="People"
+            onClick={() => {
+              setActiveTab('community');
+              if (role === UserRole.ADMIN) realtimeService.updateStation({ active_tab: 'community' });
+              document.getElementById('main-scroll-container')?.scrollTo({ top: 0, behavior: 'smooth' });
+            }}
+          />
+        </nav>
+      </div>
+
+      {/* Hidden Engine (Persistent) */}
+      <div className="hidden">
+        <RadioPlayer
+          onStateChange={(playing) => {
+            setIsRadioPlaying(playing);
+          }}
+          activeTrackUrl={activeTrackUrl}
+          currentTrackName={currentTrackName}
+          forcePlaying={isRadioPlaying}
+          onTrackEnded={() => {
+            if (role === UserRole.ADMIN) handlePlayNext();
+            else setIsRadioPlaying(false);
+          }}
+          onTimeUpdate={setCurrentPosition}
+          onDurationChange={setDuration}
+          startTime={startTime}
+          isDucking={isDucking}
+          role={role}
+          isAdmin={role === UserRole.ADMIN}
+          hasInteracted={hasInteracted}
+        />
+      </div>
 
       {showAuth && <PasswordModal onClose={() => setShowAuth(false)} onSuccess={() => { setRole(UserRole.ADMIN); setShowAuth(false); }} />}
 

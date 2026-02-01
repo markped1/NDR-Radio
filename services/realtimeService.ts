@@ -10,6 +10,7 @@ export interface StationState {
     duration?: number;
     started_at: number; // Cloud timestamp (Date.now())
     updated_at?: number;
+    active_tab?: 'home' | 'news' | 'radio' | 'community';
 }
 
 export const realtimeService = {

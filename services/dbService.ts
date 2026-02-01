@@ -1,5 +1,6 @@
 
 import { NewsItem, DjScript, AdminLog, MediaFile, AdminMessage, ListenerReport } from '../types';
+import { supabase } from './supabaseClient';
 
 const DB_NAME = 'NDN_RADIO_DB';
 const MEDIA_STORE = 'media_files';
@@ -68,9 +69,27 @@ class DBService {
   }
 
   async getNews(): Promise<NewsItem[]> {
+    try {
+      // 1. Try to fetch fresh news from Supabase (Cloud)
+      const { data, error } = await supabase
+        .from('news_items')
+        .select('*')
+        .order('timestamp', { ascending: false })
+        .limit(20);
+
+      if (!error && data && data.length > 0) {
+        const cloudNews = data as NewsItem[];
+        // Sync to local for offline fallback
+        localStorage.setItem(this.STORAGE_KEYS.NEWS, JSON.stringify(cloudNews));
+        return cloudNews;
+      }
+    } catch (err) {
+      console.warn("Cloud news fetch failed, falling back to local storage", err);
+    }
+
+    // 2. Fallback to Local Storage
     const data = localStorage.getItem(this.STORAGE_KEYS.NEWS);
     const news: NewsItem[] = data ? JSON.parse(data) : [];
-    // Strict 48-hour filter (Current News Only)
     const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
     return news.filter(n => n.timestamp > fortyEightHoursAgo);
   }
@@ -85,8 +104,26 @@ class DBService {
   async saveNews(news: NewsItem[]): Promise<void> {
     const fortyEightHoursAgo = Date.now() - 48 * 60 * 60 * 1000;
     const freshOnly = news.filter(n => n.timestamp > fortyEightHoursAgo);
+
+    // Save to Local Storage
     localStorage.setItem(this.STORAGE_KEYS.NEWS, JSON.stringify(freshOnly));
     localStorage.setItem(this.STORAGE_KEYS.LAST_SYNC, Date.now().toString());
+
+    // Save to Supabase (Cloud) for global syncing
+    try {
+      await supabase.from('news_items').upsert(
+        freshOnly.map(item => ({
+          id: item.id,
+          title: item.title,
+          content: item.content,
+          category: item.category,
+          timestamp: item.timestamp,
+          location: item.location || 'Global'
+        }))
+      );
+    } catch (err) {
+      console.error("Failed to sync news to cloud", err);
+    }
   }
 
   // Alias for compatibility

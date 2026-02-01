@@ -11,10 +11,6 @@ export interface WeatherData {
 }
 
 export async function scanNigerianNewspapers(locationLabel: string = "Global"): Promise<{ news: NewsItem[], weather?: WeatherData }> {
-  // Quota Guard: Check if we already have very fresh news (less than 15 mins old)
-  const lastSync = await dbService.getLastSyncTime();
-  const refreshThreshold = 15 * 60 * 1000;
-
   await dbService.cleanupOldNews();
   const existingNews = await dbService.getNews();
 
@@ -84,7 +80,7 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
         id: Math.random().toString(36).substr(2, 9),
         title: item.title,
         content: item.content,
-        category: item.category as any,
+        category: item.category as any, // Cast to valid category
         timestamp: Date.now()
       }));
 
