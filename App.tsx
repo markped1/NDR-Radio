@@ -270,7 +270,9 @@ const App: React.FC = () => {
         }
 
         // Always sync the playing state for listeners
-        setIsRadioPlaying(true);
+        if (!state.is_playing) {
+          setIsRadioPlaying(false);
+        }
       } else {
         setIsRadioPlaying(false);
       }
@@ -310,7 +312,8 @@ const App: React.FC = () => {
     setActiveTrackId(track.id);
     setActiveTrackUrl(track.url);
     setCurrentTrackName(cleanTrackName(track.name));
-    setIsRadioPlaying(true);
+    // RESERVOIR: Stage but don't auto-play
+    // setIsRadioPlaying(true);
 
     if (role === UserRole.ADMIN) {
       realtimeService.updateStation({
@@ -332,7 +335,8 @@ const App: React.FC = () => {
     setActiveTrackId(track.id);
     setActiveTrackUrl(track.url);
     setCurrentTrackName(cleanTrackName(track.name));
-    setIsRadioPlaying(true);
+    // RESERVOIR: Stage but don't auto-play
+    // setIsRadioPlaying(true);
 
     if (role === UserRole.ADMIN) {
       realtimeService.updateStation({
@@ -349,14 +353,15 @@ const App: React.FC = () => {
   const handlePlayAll = () => {
     setHasInteracted(true);
     if (audioPlaylist.length === 0) {
-      setIsRadioPlaying(true);
+      // setIsRadioPlaying(true); 
       return;
     }
     const track = isShuffle ? audioPlaylist[Math.floor(Math.random() * audioPlaylist.length)] : audioPlaylist[0];
     setActiveTrackId(track.id);
     setActiveTrackUrl(track.url);
     setCurrentTrackName(cleanTrackName(track.name));
-    setIsRadioPlaying(true);
+    // RESERVOIR: Stage but don't auto-play
+    // setIsRadioPlaying(true);
 
     if (role === UserRole.ADMIN) {
       realtimeService.updateStation({
@@ -447,7 +452,8 @@ const App: React.FC = () => {
                 setActiveTrackId(t.id);
                 setActiveTrackUrl(t.url);
                 setCurrentTrackName(cleanTrackName(t.name));
-                setIsRadioPlaying(true);
+                // RESERVOIR: Stage but don't auto-play
+                // setIsRadioPlaying(true);
                 if (role === UserRole.ADMIN) {
                   realtimeService.updateStation({
                     is_playing: true,
@@ -459,7 +465,15 @@ const App: React.FC = () => {
                   });
                 }
               }}
-              isRadioPlaying={isRadioPlaying} onToggleRadio={() => setIsRadioPlaying(!isRadioPlaying)}
+              isRadioPlaying={stationState?.is_playing || false}
+              onToggleRadio={() => {
+                if (role === UserRole.ADMIN) {
+                  realtimeService.updateStation({
+                    is_playing: !(stationState?.is_playing),
+                    updated_at: Date.now()
+                  });
+                }
+              }}
               currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
               onPlayAll={handlePlayAll} onSkipNext={handlePlayNext} onSkipBack={handlePlayPrevious}
               onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
@@ -471,15 +485,7 @@ const App: React.FC = () => {
                 <RadioPlayer
                   onStateChange={(playing) => {
                     setIsRadioPlaying(playing);
-                    if (role === UserRole.ADMIN) {
-                      realtimeService.updateStation({
-                        is_playing: playing,
-                        track_name: currentTrackName,
-                        track_id: activeTrackId || undefined,
-                        track_url: activeTrackUrl && !activeTrackUrl.startsWith('blob:') ? activeTrackUrl : undefined,
-                        updated_at: Date.now()
-                      });
-                    }
+                    // Local play should not force cloud live state changes here
                   }}
                   activeTrackUrl={activeTrackUrl}
                   currentTrackName={currentTrackName}

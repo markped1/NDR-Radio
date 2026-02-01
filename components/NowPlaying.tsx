@@ -71,16 +71,23 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ state, onTogglePlay, onSeek, is
                             onClick={onTogglePlay}
                             disabled={!isAdmin && !state?.is_playing}
                             className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all z-10 ${!isAdmin && !state?.is_playing
-                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
-                                    : isPlaying
-                                        ? 'bg-[#f14d4d] text-white shadow-[0_10px_30px_rgba(241,77,77,0.4)]'
-                                        : 'bg-[#008751] text-white shadow-[0_10px_30px_rgba(0,135,81,0.3)]'
+                                ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                                : isPlaying
+                                    ? 'bg-[#f14d4d] text-white shadow-[0_10px_30px_rgba(241,77,77,0.4)]'
+                                    : 'bg-[#008751] text-white shadow-[0_10px_30px_rgba(0,135,81,0.3)]'
                                 }`}
                         >
                             <i className={`fas fa-${isPlaying ? 'pause' : 'play'} text-xl ${!isPlaying ? 'ml-1' : ''}`}></i>
                         </button>
                         {isPlaying && (
                             <div className="absolute inset-0 bg-[#f14d4d]/20 rounded-full scale-110 blur-xl animate-pulse"></div>
+                        )}
+                        {!isPlaying && state?.is_playing && (
+                            <div className="absolute -bottom-8 whitespace-nowrap">
+                                <span className="text-[8px] font-black text-green-600 animate-pulse uppercase tracking-[0.2em] bg-white/80 px-2 py-1 rounded-full border border-green-100 shadow-sm">
+                                    Join Midway Live
+                                </span>
+                            </div>
                         )}
                     </div>
                 )}
