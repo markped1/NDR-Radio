@@ -170,14 +170,22 @@ class DBService {
   }
 
   async addReport(report: ListenerReport): Promise<void> {
-    const reports = await this.getReports();
-    reports.unshift(report);
+    const reports = await this.getReports(true); // Get all for admin/internal use
+    reports.unshift({ ...report, status: report.status || 'pending' });
     localStorage.setItem(this.STORAGE_KEYS.REPORTS, JSON.stringify(reports.slice(0, 50)));
   }
 
-  async getReports(): Promise<ListenerReport[]> {
+  async getReports(includeAll: boolean = false): Promise<ListenerReport[]> {
     const data = localStorage.getItem(this.STORAGE_KEYS.REPORTS);
-    return data ? JSON.parse(data) : [];
+    const reports: ListenerReport[] = data ? JSON.parse(data) : [];
+    if (includeAll) return reports;
+    return reports.filter(r => r.status === 'approved');
+  }
+
+  async updateReportStatus(id: string, status: 'approved' | 'rejected'): Promise<void> {
+    const reports = await this.getReports(true);
+    const updated = reports.map(r => r.id === id ? { ...r, status } : r);
+    localStorage.setItem(this.STORAGE_KEYS.REPORTS, JSON.stringify(updated));
   }
 
   async addLog(log: AdminLog): Promise<void> {

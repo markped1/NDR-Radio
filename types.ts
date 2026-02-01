@@ -45,6 +45,7 @@ export interface ListenerReport {
   location: string;
   content: string;
   timestamp: number;
+  status: 'pending' | 'approved' | 'rejected';
 }
 
 export enum UserRole {

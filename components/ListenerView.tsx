@@ -136,17 +136,118 @@ const ListenerView: React.FC<ListenerViewProps> = ({
         </button>
       </div>
 
-      {/* 4. NEWS TICKER MARQUEE */}
-      <div className="marquee-container mb-8">
-        <div className="marquee-text">
-          {[...Array(3)].map((_, i) => (
-            <span key={i} className="flex items-center">
-              <span className="px-10">BRINGING YOU NEWS, CULTURE, AND MUSIC FROM THE NIGERIAN DIASPORA WORLDWIDE</span>
-              <span className="w-1.5 h-1.5 bg-green-500 rounded-full mx-2"></span>
-            </span>
-          ))}
+      {/* 2. NEWS TICKER (Scrolling Text) */}
+      <div className="bg-[#008751] py-3 shadow-lg">
+        <div className="flex whitespace-nowrap animate-marquee">
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/90 px-4">
+            BRINGING YOU NEWS, CULTURE, AND MUSIC FROM THE NIGERIAN DIASPORA WORLDWIDE •
+          </span>
+          <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/90 px-4">
+            STREAMING LIVE • NIGERIA DIASPORA RADIO • THE VOICE OF NIGERIA ABROAD •
+          </span>
         </div>
       </div>
+
+      {/* 3. SPONSORED HIGHLIGHTS (Video Ads) */}
+      <section id="sponsored" className="pt-10 px-6 space-y-6">
+        <header className="px-2">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-green-700/60">Sponsored Highlights</h2>
+        </header>
+        <div className="space-y-4">
+          {sponsoredVideos.map((video) => (
+            <div key={video.id} className="relative aspect-video rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white group">
+              <SponsoredVideo video={video} />
+              <div className="absolute top-4 left-4 bg-black/40 backdrop-blur-md px-2 py-1 rounded-md flex items-center space-x-2">
+                <div className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></div>
+                <span className="text-[7px] font-black text-white uppercase tracking-widest">Sponsored</span>
+              </div>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 4. GOOGLE ADS SECTION */}
+      <section className="pt-10 px-6">
+        <div className="bg-white rounded-[2.5rem] border border-green-100 p-6 shadow-xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 p-2 opacity-20">
+            <i className="fas fa-info-circle text-[8px]"></i>
+            <span className="text-[6px] font-bold ml-1">AdChoices</span>
+          </div>
+          <div className="flex flex-col items-center text-center space-y-4 py-4">
+            <h4 className="text-[11px] font-black text-green-950 uppercase tracking-widest">Premium African Fashion</h4>
+            <p className="text-[9px] text-green-600/70 font-bold uppercase leading-relaxed max-w-[200px]">
+              Global shipping starting at $15. Shop the latest authentic styles direct from Lagos.
+            </p>
+            <button className="bg-green-50 text-green-700 px-6 py-2.5 rounded-full text-[8px] font-black uppercase tracking-widest border border-green-100 hover:bg-green-100 transition-colors shadow-sm">
+              Shop Now
+            </button>
+          </div>
+        </div>
+      </section>
+
+      {/* 5. COMMUNITY PULSE (Approved Reports) */}
+      <section id="community" className="pt-10 px-6 space-y-6 mb-20">
+        <header className="px-2">
+          <h2 className="text-[10px] font-black uppercase tracking-[0.4em] text-green-700/60">Community Pulse</h2>
+        </header>
+
+        <div className="space-y-4">
+          {reports.length === 0 ? (
+            <div className="bg-white/40 p-10 rounded-[2.5rem] border border-dashed border-green-200 text-center flex flex-col items-center text-green-800/40">
+              <i className="fas fa-feather text-2xl mb-2"></i>
+              <span className="text-[9px] font-black uppercase tracking-widest">Be the first to share</span>
+            </div>
+          ) : (
+            reports.map((report) => (
+              <div key={report.id} className="bg-white p-6 rounded-[2rem] shadow-lg border border-green-50 space-y-3 relative overflow-hidden group hover:shadow-green-900/5 transition-all">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-green-50 rounded-2xl flex items-center justify-center text-green-600 shadow-inner">
+                    <i className="fas fa-map-marker-alt text-xs"></i>
+                  </div>
+                  <div>
+                    <h4 className="text-[11px] font-black text-green-950 uppercase tracking-tighter">{report.reporterName}</h4>
+                    <p className="text-[8px] text-green-500 font-bold uppercase tracking-widest">{report.location}</p>
+                  </div>
+                </div>
+                <p className="text-[10px] text-green-900/80 font-medium leading-relaxed bg-[#f8fdfa] p-4 rounded-xl italic">
+                  "{report.content}"
+                </p>
+                <div className="text-right">
+                  <span className="text-[6px] font-black text-green-300 uppercase">{new Date(report.timestamp).toLocaleTimeString()}</span>
+                </div>
+              </div>
+            ))
+          )}
+        </div>
+
+        {/* Action Button: Send Report */}
+        <div className="pt-4">
+          <button
+            onClick={() => {
+              const content = prompt("What's happening in your location?");
+              if (content) {
+                const reporterName = prompt("Your Name") || 'Anonymous';
+                const location = prompt("Location") || 'Unknown';
+                const newReport: ListenerReport = {
+                  id: 'report-' + Date.now(),
+                  reporterName,
+                  location,
+                  content,
+                  timestamp: Date.now(),
+                  status: 'pending'
+                };
+                dbService.addReport(newReport).then(() => {
+                  alert("Report sent to Admin for moderation! It will appear once approved.");
+                });
+              }
+            }}
+            className="w-full capsule-border bg-[#008751] text-white py-5 text-[10px] font-black uppercase tracking-[0.2em] shadow-xl active:scale-[0.98] transition-all flex items-center justify-center space-x-3"
+          >
+            <i className="fas fa-paper-plane text-xs animate-bounce-right"></i>
+            <span>Send Community Report</span>
+          </button>
+        </div>
+      </section>
 
       {/* 5. NEWSROOM (LATEST INTELLIGENCE) */}
       <section id="news" className="px-6 space-y-4">
@@ -165,57 +266,6 @@ const ListenerView: React.FC<ListenerViewProps> = ({
               </div>
             </article>
           ))}
-        </div>
-      </section>
-
-      {/* 6. SPONSORED HIGHLIGHTS */}
-      <section className="px-6 pt-10 space-y-4">
-        <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pl-1">SPONSORED HIGHLIGHTS</h3>
-        <div className="relative capsule-card overflow-hidden premium-shadow aspect-video group">
-          {currentAd ? (
-            <>
-              {currentAd.type === 'image' ? (
-                <img src={currentAd.url} className="w-full h-full object-cover" alt="ad" />
-              ) : (
-                <SponsoredVideo video={currentAd} onEnded={nextAd} />
-              )}
-              {/* Overlay matching image */}
-              <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
-                <div className="flex items-center space-x-2">
-                  <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full text-[6px] font-black uppercase tracking-widest border border-white/30">● SPONSORED</span>
-                </div>
-                <div className="mt-4">
-                  <h4 className="text-[10px] font-black uppercase tracking-widest">VERIFIED SPONSOR</h4>
-                  <p className="text-[8px] font-bold text-white/60 tracking-tighter mt-1 uppercase">GLOBAL DIASPORA NETWORK</p>
-                </div>
-              </div>
-            </>
-          ) : (
-            <div className="w-full h-full bg-black/5 flex items-center justify-center">
-              <span className="text-[8px] font-black uppercase tracking-widest opacity-20">Awaiting Sponsored Content</span>
-            </div>
-          )}
-        </div>
-      </section>
-
-      {/* 7. GOOGLE ADS SECTION */}
-      <section id="community" className="px-6 py-10 space-y-4">
-        <div className="flex justify-between items-center pl-1">
-          <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">GOOGLE ADS</h3>
-          <div className="flex items-center space-x-1 opacity-20">
-            <i className="fas fa-info-circle text-[8px]"></i>
-            <span className="text-[6px] font-bold uppercase">AdChoices</span>
-          </div>
-        </div>
-
-        <div className="capsule-card bg-white p-8 text-center space-y-4 premium-shadow">
-          <div className="space-y-2">
-            <h4 className="text-[16px] font-black text-[#004d30] uppercase tracking-tighter">PREMIUM AFRICAN FASHION</h4>
-            <p className="text-[10px] text-gray-500 font-medium leading-relaxed max-w-[240px] mx-auto">
-              Global shipping starting at $15. Shop the latest authentic styles direct from Lagos!
-            </p>
-          </div>
-          <button className="w-full h-[1px] bg-gradient-to-r from-blue-400 via-purple-400 to-orange-400 opacity-50"></button>
         </div>
       </section>
 
@@ -241,30 +291,6 @@ const ListenerView: React.FC<ListenerViewProps> = ({
           </div>
         </section>
       )}
-
-      {/* 9. COMMUNITY REPORTS (Integrated) */}
-      <section className="px-6 pb-20 space-y-6">
-        <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pl-1">VOICES OF THE DIASPORA</h3>
-        <div className="space-y-3">
-          {reports.length > 0 ? (
-            reports.map((r, i) => (
-              <div key={i} className="bg-white p-5 rounded-3xl border border-[#cfdfd6] premium-shadow group">
-                <div className="flex justify-between items-center mb-1">
-                  <span className="text-[7px] font-black text-[#008751] uppercase tracking-tighter flex items-center">
-                    <i className="fas fa-map-marker-alt mr-1.5 text-red-400"></i> {r.location}
-                  </span>
-                  <span className="text-[6px] font-mono text-gray-300 uppercase">{new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                </div>
-                <p className="text-[10px] text-[#004d30] font-bold leading-tight mt-2">"{r.content}"</p>
-              </div>
-            ))
-          ) : (
-            <div className="bg-white/40 border border-dashed border-[#cfdfd6] p-10 rounded-3xl text-center">
-              <span className="text-[8px] font-black uppercase tracking-widest opacity-20">Community is quiet...</span>
-            </div>
-          )}
-        </div>
-      </section>
 
 
       {/* Footer Branding */}

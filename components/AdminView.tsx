@@ -184,6 +184,7 @@ const AdminView: React.FC<AdminViewProps> = ({
             isAdmin={true}
             isPlaying={isRadioPlaying}
             onTogglePlay={handleToggleRadio}
+            showListenerControls={false}
             onSeek={(time) => {
               realtimeService.updateStation({
                 started_at: Date.now() - (time * 1000)
@@ -222,32 +223,53 @@ const AdminView: React.FC<AdminViewProps> = ({
         </div>
       </section>
 
-      {/* 2. LIVE NEWSROOM */}
-      <section id="admin-news" className="space-y-4">
-        <header className="px-1 flex justify-between items-end">
-          <div>
-            <h2 className="text-xl font-black uppercase tracking-tighter text-green-950">Newsroom</h2>
-            <p className="text-[8px] font-bold text-green-600 uppercase tracking-widest">Voice Broadcast Engine</p>
-          </div>
-          <button onClick={onTriggerFullBulletin} className="bg-[#008751] text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase shadow-sm">Force Sync</button>
+      {/* 3. MODERATION INBOX */}
+      <section id="admin-inbox" className="space-y-4">
+        <header className="px-1">
+          <h2 className="text-xl font-black uppercase tracking-tighter text-amber-600">Moderation Inbox</h2>
+          <p className="text-[8px] font-bold text-amber-500 uppercase tracking-widest">Scrutiny & Approval</p>
         </header>
 
-        <div className="space-y-3 overflow-x-auto pb-2 -mx-1 px-1 flex no-scrollbar mask-gradient">
-          {news.map(n => (
-            <div key={n.id} className="min-w-[280px] bg-white p-6 rounded-[2rem] border border-green-50 shadow-md space-y-4 flex flex-col mr-3">
-              <div className="flex-grow space-y-2">
-                <h4 className="text-[11px] font-black text-green-950 leading-tight italic-none uppercase line-clamp-2">{n.title}</h4>
-                <p className="text-[9px] text-green-800 font-medium line-clamp-3">{n.content}</p>
-              </div>
-              <button onClick={() => handleManualBroadcast(n)} className="w-full bg-green-50 text-green-700 py-3 rounded-2xl text-[8px] font-black uppercase flex items-center justify-center active:scale-95 transition-all">
-                <i className="fas fa-microphone-lines mr-2"></i> Voice Broadcast
-              </button>
+        <div className="bg-white rounded-[2.5rem] border border-amber-100 shadow-xl overflow-hidden min-h-[150px]">
+          {reports.filter(r => r.status === 'pending').length === 0 ? (
+            <div className="p-10 text-center opacity-30 flex flex-col items-center">
+              <i className="fas fa-check-double text-3xl mb-2"></i>
+              <span className="text-[9px] font-black uppercase tracking-widest">Inbox Clean</span>
             </div>
-          ))}
+          ) : (
+            <div className="max-h-[300px] overflow-y-auto no-scrollbar p-2 space-y-2">
+              {reports.filter(r => r.status === 'pending').map(report => (
+                <div key={report.id} className="bg-amber-50/30 p-4 rounded-2xl border border-amber-100 space-y-3">
+                  <div className="flex justify-between items-start">
+                    <div>
+                      <h4 className="text-[10px] font-black text-amber-900 uppercase">{report.reporterName}</h4>
+                      <p className="text-[7px] font-bold text-amber-700/60 uppercase">{report.location}</p>
+                    </div>
+                    <span className="text-[6px] font-black bg-amber-200 text-amber-700 px-2 py-0.5 rounded-full">PENDING</span>
+                  </div>
+                  <p className="text-[10px] text-amber-950 font-medium leading-relaxed">{report.content}</p>
+                  <div className="flex space-x-2 pt-2">
+                    <button
+                      onClick={() => dbService.updateReportStatus(report.id, 'approved').then(loadData)}
+                      className="flex-1 bg-[#008751] text-white py-2 rounded-xl text-[8px] font-black uppercase shadow-sm active:scale-95 transition-all"
+                    >
+                      Approve
+                    </button>
+                    <button
+                      onClick={() => dbService.updateReportStatus(report.id, 'rejected').then(loadData)}
+                      className="flex-1 bg-red-100 text-red-600 py-2 rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all"
+                    >
+                      Reject
+                    </button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
         </div>
       </section>
 
-      {/* 3. MEDIA ARCHIVE */}
+      {/* 4. MEDIA ARCHIVE */}
       <section id="admin-media" className="space-y-4">
         <header className="px-1">
           <h2 className="text-xl font-black uppercase tracking-tighter text-green-950">Vault</h2>

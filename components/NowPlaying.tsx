@@ -10,9 +10,10 @@ interface NowPlayingProps {
     isPlaying: boolean;
     analyser?: AnalyserNode | null;
     middleContent?: React.ReactNode;
+    showListenerControls?: boolean;
 }
 
-const NowPlaying: React.FC<NowPlayingProps> = ({ state, onTogglePlay, onSeek, isAdmin, isPlaying, analyser, middleContent }) => {
+const NowPlaying: React.FC<NowPlayingProps> = ({ state, onTogglePlay, onSeek, isAdmin, isPlaying, analyser, middleContent, showListenerControls = true }) => {
     const [progress, setProgress] = useState(0);
 
     useEffect(() => {
@@ -64,15 +65,17 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ state, onTogglePlay, onSeek, is
             {/* 3. CONTROLS AREA */}
             <div className="flex flex-col items-center w-full space-y-10">
                 {/* Floating Play Button */}
-                <div className="relative flex flex-col items-center justify-center">
-                    <button
-                        onClick={onTogglePlay}
-                        className="w-16 h-16 rounded-full bg-[#f14d4d] text-white flex items-center justify-center shadow-[0_10px_30px_rgba(241,77,77,0.4)] active:scale-90 transition-all z-10"
-                    >
-                        <i className={`fas fa-${isPlaying ? 'pause' : 'play'} text-xl ${!isPlaying ? 'ml-1' : ''}`}></i>
-                    </button>
-                    <div className="absolute inset-0 bg-[#f14d4d]/20 rounded-full scale-110 blur-xl"></div>
-                </div>
+                {showListenerControls && (
+                    <div className="relative flex flex-col items-center justify-center">
+                        <button
+                            onClick={onTogglePlay}
+                            className="w-16 h-16 rounded-full bg-[#f14d4d] text-white flex items-center justify-center shadow-[0_10px_30px_rgba(241,77,77,0.4)] active:scale-90 transition-all z-10"
+                        >
+                            <i className={`fas fa-${isPlaying ? 'pause' : 'play'} text-xl ${!isPlaying ? 'ml-1' : ''}`}></i>
+                        </button>
+                        <div className="absolute inset-0 bg-[#f14d4d]/20 rounded-full scale-110 blur-xl"></div>
+                    </div>
+                )}
 
                 {/* Progress / Volume Slider Placeholder matching image */}
                 <div className="flex items-center space-x-6 w-full px-8 opacity-60">
