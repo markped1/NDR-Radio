@@ -15,6 +15,7 @@ interface RadioPlayerProps {
   isAdmin?: boolean;
   role?: UserRole;
   isDucking?: boolean;
+  visualOnly?: boolean; // New prop to show UI only, not run engine
 }
 
 const RadioPlayer: React.FC<RadioPlayerProps> = ({
@@ -26,7 +27,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   onTimeUpdate,
   startTime = 0,
   role = UserRole.LISTENER,
-  isDucking = false
+  isDucking = false,
+  visualOnly = false
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1.0);
@@ -165,34 +167,65 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
   const formatTime = (time: number) => {
+    if (!isFinite(time)) return "--:--";
     const mins = Math.floor(time / 60);
     const secs = Math.floor(time % 60);
     return `${mins}:${secs.toString().padStart(2, '0')}`;
   };
 
-  return (
-    <div className="flex flex-col items-center justify-center space-y-2 w-full">
-      <Logo size="lg" analyser={analyser} isPlaying={isPlaying} />
+  // If this is the hidden engine, we return null or minimal
+  if (visualOnly === false && role === UserRole.LISTENER && !forcePlaying && !activeTrackUrl) {
+    // Hidden engine should still exist to catch global events, but we can skip render
+  }
 
-      <div className="w-[80%] mt-4 relative z-20">
-        <div className="h-1.5 w-full bg-green-100/50 rounded-full overflow-hidden backdrop-blur-sm border border-green-50">
-          <div className="h-full bg-[#008751] transition-all duration-300 shadow-[0_0_10px_#008751]" style={{ width: `${progress}%` }}></div>
+  // If this is the VISUAL representation
+  return (
+    <div className="flex flex-col items-center w-full px-6 py-8 animate-in fade-in zoom-in duration-500">
+      {/* 1. ARTWORK / LOGO SECTION */}
+      <div className="relative mb-12 group">
+        <div className="absolute inset-0 bg-green-500/20 blur-[60px] rounded-full group-hover:bg-green-500/30 transition-all duration-700"></div>
+        <div className="relative z-10 w-64 h-64 bg-white rounded-[3rem] shadow-2xl flex items-center justify-center border border-green-50 overflow-hidden group-hover:scale-[1.02] transition-transform duration-500">
+          <Logo size="xl" analyser={analyser} isPlaying={isPlaying} />
+          {isPlaying && (
+            <div className="absolute bottom-4 flex space-x-1">
+              {[1, 2, 3, 4, 5].map(i => (
+                <div key={i} className={`w-1 bg-[#008751] rounded-full animate-music-bar-${(i % 3) + 1}`} style={{ height: '12px' }}></div>
+              ))}
+            </div>
+          )}
         </div>
-        {duration > 0 && isFinite(duration) && (
-          <div className="flex justify-between mt-1 px-1">
-            <span className="text-[7px] font-bold text-green-800">{formatTime(currentTime)}</span>
-            <span className="text-[7px] font-bold text-green-800">{formatTime(duration)}</span>
-          </div>
-        )}
       </div>
 
-      <div className="flex flex-col items-center space-y-3 relative z-20 w-full px-12">
-        {/* Simplified Static Track Info Display with "NOW PLAYING:" prefix */}
-        <div className="bg-[#008751]/10 px-4 py-2 rounded-full border border-green-200/50 w-full overflow-hidden shadow-inner flex items-center justify-center text-center">
-          <span className="text-[7px] font-black uppercase text-green-800 tracking-widest line-clamp-1">
-            NOW PLAYING: {currentTrackName}
-          </span>
+      {/* 2. TRACK INFO */}
+      <div className="text-center space-y-2 mb-10 w-full max-w-xs">
+        <h2 className="text-xl font-black text-green-950 uppercase tracking-tight line-clamp-2 leading-tight">
+          {currentTrackName}
+        </h2>
+        <div className="flex items-center justify-center space-x-2">
+          <span className="w-1.5 h-1.5 bg-red-500 rounded-full animate-pulse"></span>
+          <span className="text-[9px] font-black text-green-600/60 uppercase tracking-[0.3em]">Live from Lagos</span>
         </div>
+      </div>
+
+      {/* 3. PROGRESS BAR */}
+      <div className="w-full mb-10 space-y-2">
+        <div className="relative h-2 bg-green-100 rounded-full overflow-hidden shadow-inner cursor-pointer group">
+          <div
+            className="absolute top-0 left-0 h-full bg-[#008751] transition-all duration-300 shadow-[0_0_15px_rgba(0,135,81,0.5)]"
+            style={{ width: `${progress}%` }}
+          ></div>
+        </div>
+        <div className="flex justify-between px-1">
+          <span className="text-[9px] font-black text-green-900 mono">{formatTime(currentTime)}</span>
+          <span className="text-[9px] font-black text-green-900/40 mono">{formatTime(duration)}</span>
+        </div>
+      </div>
+
+      {/* 4. MAIN CONTROLS */}
+      <div className="flex items-center justify-center space-x-10 mb-12">
+        <button className="text-gray-400 hover:text-green-600 transition-colors">
+          <i className="fas fa-backward-step text-xl"></i>
+        </button>
 
         <button
           onClick={() => {
@@ -201,45 +234,47 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
             if (isPlaying) audioRef.current.pause();
             else audioRef.current.play().catch(() => setStatus('ERROR'));
           }}
-          className={`w-16 h-16 rounded-full flex items-center justify-center shadow-[0_8px_24px_rgba(0,135,81,0.4)] transition-all active:scale-95 bg-[#008751] hover:bg-[#007043] border-[3px] border-white/20`}
+          className={`w-24 h-24 rounded-[2.5rem] flex items-center justify-center shadow-2xl shadow-green-900/20 transition-all active:scale-95 bg-[#008751] hover:bg-[#007043] border-4 border-white group`}
           disabled={status === 'LOADING'}
         >
           {status === 'LOADING' ? (
-            <svg className="animate-spin h-8 w-8 text-white" fill="none" viewBox="0 0 24 24">
+            <svg className="animate-spin h-10 w-10 text-white" fill="none" viewBox="0 0 24 24">
               <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
               <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
             </svg>
           ) : isPlaying ? (
-            /* Pause Icon (Two Stripes) */
-            <svg className="w-8 h-8 text-white fill-current" viewBox="0 0 24 24">
-              <rect x="6" y="4" width="4" height="16" rx="1" />
-              <rect x="14" y="4" width="4" height="16" rx="1" />
-            </svg>
+            <i className="fas fa-pause text-3xl text-white"></i>
           ) : (
-            /* Play Icon (Forward Arrow) */
-            <svg className="w-8 h-8 text-white fill-current ml-1" viewBox="0 0 24 24">
-              <path d="M5.5 3.5L20.5 12L5.5 20.5V3.5Z" stroke="white" strokeWidth="2" strokeLinejoin="round" />
-            </svg>
+            <i className="fas fa-play text-3xl text-white ml-2"></i>
           )}
         </button>
 
-        <div className="w-32 flex items-center space-x-2">
-          <i className="fas fa-volume-down text-green-600 text-[8px]"></i>
+        <button className="text-gray-400 hover:text-green-600 transition-colors">
+          <i className="fas fa-forward-step text-xl"></i>
+        </button>
+      </div>
+
+      {/* 5. VOLUME SLIDER */}
+      <div className="w-full flex items-center space-x-4 px-8 opacity-60 hover:opacity-100 transition-opacity">
+        <i className="fas fa-volume-off text-xs text-green-950"></i>
+        <div className="flex-grow relative h-1 bg-green-100 rounded-full overflow-hidden">
           <input
             type="range" min="0" max="1" step="0.01" value={volume}
             onChange={(e) => setVolume(parseFloat(e.target.value))}
-            className="flex-grow h-0.5 bg-green-100 rounded-lg appearance-none accent-[#008751]"
+            className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
           />
-          <i className="fas fa-volume-up text-green-600 text-[8px]"></i>
+          <div className="absolute top-0 left-0 h-full bg-[#008751]" style={{ width: `${volume * 100}%` }}></div>
         </div>
-
-        {/* Debug: Fallback Warning */}
-        {isPlaying && activeTrackUrl === DEFAULT_STREAM_URL && (
-          <p className="text-[7px] text-red-500 font-bold bg-white/80 px-2 py-1 rounded-full mt-2 animate-pulse">
-            Offline: Using Internet Stream (Might Fail)
-          </p>
-        )}
+        <i className="fas fa-volume-up text-xs text-green-950"></i>
       </div>
+
+      {/* 6. STATUS INDICATOR */}
+      {isPlaying && activeTrackUrl === DEFAULT_STREAM_URL && (
+        <div className="mt-10 px-4 py-1.5 bg-red-50 text-red-600 rounded-full border border-red-100 flex items-center space-x-2 animate-bounce">
+          <i className="fas fa-wifi text-[8px]"></i>
+          <span className="text-[8px] font-black uppercase tracking-widest">Internet Stream</span>
+        </div>
+      )}
     </div>
   );
 };

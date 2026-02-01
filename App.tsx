@@ -29,6 +29,8 @@ const App: React.FC = () => {
   const [hasInteracted, setHasInteracted] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>("Global");
   const [currentPosition, setCurrentPosition] = useState(0); // Track current playback position in seconds
+  const [activeTab, setActiveTab] = useState<'home' | 'news' | 'radio' | 'community'>('home');
+  const [isPlayerExpanded, setIsPlayerExpanded] = useState(false);
 
   const aiAudioContextRef = useRef<AudioContext | null>(null);
   const isSyncingRef = useRef(false);
@@ -331,53 +333,133 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="min-h-[100dvh] bg-white text-[#008751] flex flex-col w-full relative overflow-x-hidden">
-      <header className="p-2 sticky top-0 z-40 bg-white/90 backdrop-blur-md flex justify-between items-center border-b border-green-50 shadow-sm">
-        <div className="flex flex-col">
-          <h1 className="text-[11px] font-black italic uppercase leading-none text-green-950">{APP_NAME}</h1>
-          <p className="text-[6px] text-green-950/60 font-black uppercase mt-0.5 tracking-widest">Designed by {DESIGNER_NAME}</p>
-        </div>
+    <div className="h-[100dvh] bg-[#f8fafc] text-[#008751] flex flex-col w-full relative overflow-hidden font-sans selection:bg-green-100 italic-none">
+      {/* 1. PREMIUM HEADER */}
+      <header className="px-4 py-3 sticky top-0 z-50 bg-white/80 backdrop-blur-xl flex justify-between items-center border-b border-green-50/50">
         <div className="flex items-center space-x-2">
-          {isDucking && <span className="text-[7px] font-black uppercase text-red-500 animate-pulse bg-red-50 px-1 rounded shadow-sm border border-red-100">Live Broadcast</span>}
-          <button
-            onClick={role === UserRole.ADMIN ? () => setRole(UserRole.LISTENER) : () => setShowAuth(true)}
-            className="px-2 py-0.5 rounded-full border border-green-950 text-[7px] font-black uppercase text-green-950 hover:bg-green-50 transition-colors"
-          >
-            {role === UserRole.ADMIN ? 'Exit Admin' : 'Admin Login'}
-          </button>
+          <div className="w-8 h-8 bg-[#008751] rounded-lg flex items-center justify-center shadow-lg shadow-green-900/20 rotate-3 transition-transform hover:rotate-0">
+            <i className="fas fa-broadcast-tower text-white text-xs"></i>
+          </div>
+          <div className="flex flex-col">
+            <h1 className="text-[12px] font-black tracking-tight text-green-900 leading-none">{APP_NAME}</h1>
+            <p className="text-[7px] text-green-600/60 font-bold uppercase tracking-[0.2em] mt-0.5">Voice of the Diaspora</p>
+          </div>
         </div>
+        <button
+          onClick={role === UserRole.ADMIN ? () => setRole(UserRole.LISTENER) : () => setShowAuth(true)}
+          className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center border border-green-100 text-green-800 hover:bg-green-100 transition-all active:scale-90"
+          title="Admin Access"
+        >
+          <i className={`fas ${role === UserRole.ADMIN ? 'fa-user-shield' : 'fa-lock'} text-[10px]`}></i>
+        </button>
       </header>
 
       {!hasInteracted && (
-        <div className="fixed inset-0 z-50 bg-black/80 flex items-center justify-center p-4 backdrop-blur-sm animate-scale-in">
-          <div className="bg-white rounded-3xl p-8 max-w-sm w-full text-center space-y-4 shadow-2xl">
-            <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto animate-bounce">
-              <i className="fas fa-play text-2xl text-[#008751]"></i>
+        <div className="fixed inset-0 z-[100] bg-[#008751] flex flex-col items-center justify-center p-8 text-white overflow-hidden">
+          <div className="absolute top-0 left-0 w-full h-full opacity-10 pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/cubes.png')]"></div>
+          <div className="relative z-10 text-center space-y-8 max-w-sm w-full animate-in fade-in zoom-in duration-700">
+            <div className="w-24 h-24 bg-white/20 backdrop-blur-md rounded-[2.5rem] flex items-center justify-center mx-auto shadow-2xl border border-white/30 animate-pulse">
+              <i className="fas fa-play text-4xl ml-2"></i>
             </div>
-            <h2 className="text-xl font-black text-green-950 uppercase">{APP_NAME}</h2>
-            <p className="text-xs text-green-800/80 font-medium">Click below to tune in to the live broadcast and enable AI audio features.</p>
+            <div className="space-y-2">
+              <h2 className="text-3xl font-black tracking-tighter uppercase leading-none">{APP_NAME}</h2>
+              <p className="text-xs font-medium text-green-50/80 leading-relaxed px-4">Tune in to the sound of home. Breaking news, sports, and Afrobeats synced worldwide.</p>
+            </div>
             <button
               onClick={() => {
                 setHasInteracted(true);
                 if (aiAudioContextRef.current) aiAudioContextRef.current.resume();
-
-                // Initial Play is Manual
-                // But we fetch the latest state from cloud immediately in useEffect
                 scanNigerianNewspapers(currentLocation).then(fetchData);
               }}
-              className="w-full bg-[#008751] text-white py-4 rounded-xl font-black uppercase tracking-widest text-sm hover:bg-green-700 transition-all shadow-lg active:scale-95"
+              className="w-full bg-white text-[#008751] py-5 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-green-50 transition-all shadow-[0_20px_40px_rgba(0,0,0,0.2)] active:scale-95 group"
             >
-              Start Listening (Join Live Broadcast)
+              Enter Station <i className="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
             </button>
           </div>
+          <p className="absolute bottom-10 text-[8px] font-black uppercase tracking-[0.4em] opacity-40">Designed by {DESIGNER_NAME}</p>
         </div>
       )}
 
-      <main className="flex-grow pt-1 px-1.5">
+      {/* 2. MAIN CONTENT AREA */}
+      <main className="flex-grow overflow-y-auto no-scrollbar relative">
+        {role === UserRole.ADMIN ? (
+          <div className="p-4">
+            <AdminView
+              onRefreshData={fetchData} logs={logs} onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
+              isRadioPlaying={isRadioPlaying} onToggleRadio={() => setIsRadioPlaying(!isRadioPlaying)}
+              currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
+              onPlayAll={handlePlayAll} onSkipNext={handlePlayNext}
+              onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
+              news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
+              currentPosition={currentPosition}
+            />
+          </div>
+        ) : (
+          <div className="animate-in fade-in slide-in-from-bottom-4 duration-500">
+            <ListenerView
+              news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
+              sponsoredVideos={sponsoredMedia} activeTrackUrl={activeTrackUrl}
+              currentTrackName={currentTrackName} adminMessages={adminMessages} reports={reports}
+              activeTab={activeTab}
+              onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
+            />
+          </div>
+        )}
+      </main>
+
+      {/* 3. PERSISTENT MINI PLAYER & NAV BAR (Listener Only) */}
+      {role === UserRole.LISTENER && (
+        <div className="z-40 bg-white/80 backdrop-blur-xl border-t border-green-50/50 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
+          {/* Mini Player */}
+          {(isRadioPlaying || activeTrackId) && (
+            <div
+              onClick={() => setActiveTab('radio')}
+              className="px-4 py-2 flex items-center space-x-3 cursor-pointer group active:scale-[0.98] transition-all"
+            >
+              <div className="w-10 h-10 rounded-xl bg-green-100 flex-shrink-0 relative overflow-hidden border border-green-200">
+                {isRadioPlaying ? (
+                  <div className="absolute inset-0 flex items-center justify-center space-x-0.5">
+                    <div className="w-0.5 h-3 bg-green-600 animate-music-bar-1"></div>
+                    <div className="w-0.5 h-4 bg-green-600 animate-music-bar-2"></div>
+                    <div className="w-0.5 h-3 bg-green-600 animate-music-bar-3"></div>
+                  </div>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center">
+                    <i className="fas fa-play text-[#008751] text-xs"></i>
+                  </div>
+                )}
+              </div>
+              <div className="flex-grow min-w-0">
+                <p className="text-[10px] font-black text-green-900 truncate uppercase tracking-tight">{currentTrackName}</p>
+                <div className="flex items-center space-x-2">
+                  <span className="text-[7px] font-bold text-green-500 uppercase tracking-widest">{isRadioPlaying ? 'On Air' : 'Paused'}</span>
+                  {isDucking && <span className="text-[6px] bg-red-500 text-white px-1.5 rounded-full font-black animate-pulse">AI BROADCAST</span>}
+                </div>
+              </div>
+              <button
+                onClick={(e) => { e.stopPropagation(); setIsRadioPlaying(!isRadioPlaying); }}
+                className="w-10 h-10 rounded-full flex items-center justify-center text-green-900 hover:bg-green-50 transition-colors"
+              >
+                <i className={`fas ${isRadioPlaying ? 'fa-pause' : 'fa-play'} text-sm`}></i>
+              </button>
+            </div>
+          )}
+
+          {/* Bottom Navigation */}
+          <nav className="flex justify-around items-center h-16">
+            <NavButton active={activeTab === 'home'} icon="home" label="Home" onClick={() => setActiveTab('home')} />
+            <NavButton active={activeTab === 'news'} icon="newspaper" label="News" onClick={() => setActiveTab('news')} />
+            <NavButton active={activeTab === 'radio'} icon="circle-play" label="Listen" onClick={() => setActiveTab('radio')} />
+            <NavButton active={activeTab === 'community'} icon="users" label="Social" onClick={() => setActiveTab('community')} />
+          </nav>
+        </div>
+      )}
+
+      {/* Hidden Player Engine */}
+      <div className="hidden">
         <RadioPlayer
           onStateChange={(playing) => {
             setIsRadioPlaying(playing);
-            // ONLY Admin can broadcast state changes back to Supabase
             if (role === UserRole.ADMIN) {
               realtimeService.updateStation({
                 is_playing: playing,
@@ -395,30 +477,34 @@ const App: React.FC = () => {
           isDucking={isDucking}
           role={role}
         />
-
-        {role === UserRole.LISTENER ? (
-          <ListenerView
-            news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
-            sponsoredVideos={sponsoredMedia} activeTrackUrl={activeTrackUrl}
-            currentTrackName={currentTrackName} adminMessages={adminMessages} reports={reports}
-            onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
-          />
-        ) : (
-          <AdminView
-            onRefreshData={fetchData} logs={logs} onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
-            isRadioPlaying={isRadioPlaying} onToggleRadio={() => setIsRadioPlaying(!isRadioPlaying)}
-            currentTrackName={currentTrackName} isShuffle={isShuffle} onToggleShuffle={() => setIsShuffle(!isShuffle)}
-            onPlayAll={handlePlayAll} onSkipNext={handlePlayNext}
-            onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
-            news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
-            currentPosition={currentPosition}
-          />
-        )}
-      </main>
+      </div>
 
       {showAuth && <PasswordModal onClose={() => setShowAuth(false)} onSuccess={() => { setRole(UserRole.ADMIN); setShowAuth(false); }} />}
+
+      <style>{`
+        .no-scrollbar::-webkit-scrollbar { display: none; }
+        @keyframes music-bar-1 { 0%, 100% { height: 8px; } 50% { height: 16px; } }
+        @keyframes music-bar-2 { 0%, 100% { height: 12px; } 50% { height: 4px; } }
+        @keyframes music-bar-3 { 0%, 100% { height: 6px; } 50% { height: 14px; } }
+        .animate-music-bar-1 { animation: music-bar-1 0.8s ease-in-out infinite; }
+        .animate-music-bar-2 { animation: music-bar-2 1.2s ease-in-out infinite; }
+        .animate-music-bar-3 { animation: music-bar-3 1.0s ease-in-out infinite; }
+      `}</style>
     </div>
   );
 };
+
+const NavButton: React.FC<{ active: boolean; icon: string; label: string; onClick: () => void }> = ({ active, icon, label, onClick }) => (
+  <button
+    onClick={onClick}
+    className={`flex flex-col items-center justify-center space-y-1 transition-all duration-300 ${active ? 'text-[#008751] scale-110' : 'text-gray-400 hover:text-green-600/60'}`}
+  >
+    <div className={`text-lg mb-0.5 ${active ? 'animate-in zoom-in-50 duration-300' : ''}`}>
+      <i className={`fas fa-${icon}`}></i>
+    </div>
+    <span className={`text-[8px] font-black uppercase tracking-widest transition-opacity ${active ? 'opacity-100' : 'opacity-60'}`}>{label}</span>
+    {active && <div className="w-1 h-1 bg-[#008751] rounded-full mt-1"></div>}
+  </button>
+);
 
 export default App;
