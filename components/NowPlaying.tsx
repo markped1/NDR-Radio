@@ -69,11 +69,19 @@ const NowPlaying: React.FC<NowPlayingProps> = ({ state, onTogglePlay, onSeek, is
                     <div className="relative flex flex-col items-center justify-center">
                         <button
                             onClick={onTogglePlay}
-                            className="w-16 h-16 rounded-full bg-[#f14d4d] text-white flex items-center justify-center shadow-[0_10px_30px_rgba(241,77,77,0.4)] active:scale-90 transition-all z-10"
+                            disabled={!isAdmin && !state?.is_playing}
+                            className={`w-16 h-16 rounded-full flex items-center justify-center shadow-lg active:scale-90 transition-all z-10 ${!isAdmin && !state?.is_playing
+                                    ? 'bg-gray-300 text-gray-500 cursor-not-allowed shadow-none'
+                                    : isPlaying
+                                        ? 'bg-[#f14d4d] text-white shadow-[0_10px_30px_rgba(241,77,77,0.4)]'
+                                        : 'bg-[#008751] text-white shadow-[0_10px_30px_rgba(0,135,81,0.3)]'
+                                }`}
                         >
                             <i className={`fas fa-${isPlaying ? 'pause' : 'play'} text-xl ${!isPlaying ? 'ml-1' : ''}`}></i>
                         </button>
-                        <div className="absolute inset-0 bg-[#f14d4d]/20 rounded-full scale-110 blur-xl"></div>
+                        {isPlaying && (
+                            <div className="absolute inset-0 bg-[#f14d4d]/20 rounded-full scale-110 blur-xl animate-pulse"></div>
+                        )}
                     </div>
                 )}
 

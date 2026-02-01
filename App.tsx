@@ -247,7 +247,6 @@ const App: React.FC = () => {
           setActiveTrackUrl(track.url);
           setCurrentTrackName(cleanTrackName(track.name));
 
-          // Only apply offset if started_at is within a reasonable range (last 2 hours)
           const now = Date.now();
           if (state.started_at > 0 && (now - state.started_at) < 7200000) {
             const offset = Math.max(0, (now - state.started_at) / 1000);
@@ -256,9 +255,18 @@ const App: React.FC = () => {
             setStartTime(0);
           }
         } else if (state.track_url && !state.track_url.startsWith('blob:')) {
+          // Fallback to track_url if provided by admin (and not a local blob)
+          setActiveTrackId(state.track_id || null);
           setActiveTrackUrl(state.track_url);
           setCurrentTrackName(cleanTrackName(state.track_name));
-          setStartTime(0);
+
+          const now = Date.now();
+          if (state.started_at > 0 && (now - state.started_at) < 7200000) {
+            const offset = Math.max(0, (now - state.started_at) / 1000);
+            setStartTime(offset);
+          } else {
+            setStartTime(0);
+          }
         }
 
         // Always sync the playing state for listeners
@@ -309,6 +317,7 @@ const App: React.FC = () => {
         is_playing: true,
         track_id: track.id,
         track_name: track.name,
+        track_url: track.url.startsWith('blob:') ? '' : track.url,
         started_at: Date.now(),
         updated_at: Date.now()
       });
@@ -330,6 +339,7 @@ const App: React.FC = () => {
         is_playing: true,
         track_id: track.id,
         track_name: track.name,
+        track_url: track.url.startsWith('blob:') ? '' : track.url,
         started_at: Date.now(),
         updated_at: Date.now()
       });
@@ -353,6 +363,7 @@ const App: React.FC = () => {
         is_playing: true,
         track_id: track.id,
         track_name: track.name,
+        track_url: track.url.startsWith('blob:') ? '' : track.url,
         started_at: Date.now(),
         updated_at: Date.now()
       });
@@ -409,6 +420,11 @@ const App: React.FC = () => {
               onClick={() => {
                 setHasInteracted(true);
                 if (aiAudioContextRef.current) aiAudioContextRef.current.resume();
+                // Prime any existing players
+                const audioElements = document.getElementsByTagName('audio');
+                for (let i = 0; i < audioElements.length; i++) {
+                  audioElements[i].play().then(() => audioElements[i].pause()).catch(() => { });
+                }
                 scanNigerianNewspapers(currentLocation).then(fetchData);
               }}
               className="w-full bg-white text-[#008751] py-5 rounded-2xl font-black uppercase tracking-widest text-sm hover:bg-green-50 transition-all shadow-[0_20px_40px_rgba(0,0,0,0.2)] active:scale-95 group"
@@ -437,6 +453,7 @@ const App: React.FC = () => {
                     is_playing: true,
                     track_id: t.id,
                     track_name: t.name,
+                    track_url: t.url && !t.url.startsWith('blob:') ? t.url : undefined,
                     started_at: Date.now(),
                     updated_at: Date.now()
                   });
@@ -459,6 +476,7 @@ const App: React.FC = () => {
                         is_playing: playing,
                         track_name: currentTrackName,
                         track_id: activeTrackId || undefined,
+                        track_url: activeTrackUrl && !activeTrackUrl.startsWith('blob:') ? activeTrackUrl : undefined,
                         updated_at: Date.now()
                       });
                     }
@@ -475,6 +493,7 @@ const App: React.FC = () => {
                   isAdmin={true}
                   visualOnly={false}
                   compact={true}
+                  hasInteracted={hasInteracted}
                 />
               }
             />
@@ -529,16 +548,24 @@ const App: React.FC = () => {
       {role === UserRole.LISTENER && (
         <div className="hidden">
           <RadioPlayer
-            onStateChange={setIsRadioPlaying}
+            onStateChange={(playing) => {
+              // Listeners only update local state, never push to cloud
+              setIsRadioPlaying(playing);
+            }}
             activeTrackUrl={activeTrackUrl}
             currentTrackName={currentTrackName}
             forcePlaying={isRadioPlaying}
-            onTrackEnded={handlePlayNext}
+            onTrackEnded={() => {
+              // Listeners do NOT auto-advance. They wait for Admin's cloud sync.
+              console.log("Track ended for listener, waiting for Admin sync...");
+              setIsRadioPlaying(false);
+            }}
             onTimeUpdate={setCurrentPosition}
             onDurationChange={setDuration}
             startTime={startTime}
             isDucking={isDucking}
             role={role}
+            hasInteracted={hasInteracted}
           />
         </div>
       )}

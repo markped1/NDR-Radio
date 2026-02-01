@@ -18,6 +18,7 @@ interface RadioPlayerProps {
   isDucking?: boolean;
   visualOnly?: boolean; // New prop to show UI only, not run engine
   compact?: boolean;    // Minimal UI for Admin Midway
+  hasInteracted?: boolean;
 }
 
 const RadioPlayer: React.FC<RadioPlayerProps> = ({
@@ -32,7 +33,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   role = UserRole.LISTENER,
   isDucking = false,
   visualOnly = false,
-  compact = false
+  compact = false,
+  hasInteracted = false
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(1.0);
@@ -162,6 +164,20 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
       }
     }
   }, [forcePlaying, startTime]);
+
+  useEffect(() => {
+    if (forcePlaying && audioContextRef.current?.state === 'suspended') {
+      initAudioContext();
+    }
+  }, [forcePlaying]);
+
+  useEffect(() => {
+    if (hasInteracted && forcePlaying && audioRef.current?.paused) {
+      console.log("Interaction detected, attempting playback re-trigger...");
+      initAudioContext();
+      audioRef.current.play().catch(console.warn);
+    }
+  }, [hasInteracted, forcePlaying]);
 
   useEffect(() => {
     const targetGain = isDucking ? volume * 0.15 : volume;

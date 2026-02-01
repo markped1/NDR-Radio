@@ -111,11 +111,17 @@ const ListenerView: React.FC<ListenerViewProps> = ({
           state={stationState}
           isAdmin={false}
           isPlaying={isRadioPlaying}
-          onTogglePlay={() => onStateChange(!isRadioPlaying)}
+          onTogglePlay={() => {
+            if (!stationState?.is_playing) {
+              alert("Station is currently OFFLINE. Tune in when the Midway is live!");
+              return;
+            }
+            onStateChange(!isRadioPlaying);
+          }}
           middleContent={
             <div className="w-full px-2">
-              <div className="capsule-border bg-[#d7ecd1]/60 backdrop-blur-sm border-[#c5e4bc] text-[#00693e] text-[9px] font-black uppercase text-center tracking-[0.2em] py-4 shadow-sm">
-                NOW PLAYING / LIVE STREAM
+              <div className={`capsule-border backdrop-blur-sm text-[9px] font-black uppercase text-center tracking-[0.2em] py-4 shadow-sm transition-colors ${stationState?.is_playing ? 'bg-[#d7ecd1]/60 border-[#c5e4bc] text-[#00693e]' : 'bg-gray-100/60 border-gray-200 text-gray-400'}`}>
+                {stationState?.is_playing ? 'LIVE FROM THE MIDWAY' : 'STATION STANDBY'}
               </div>
             </div>
           }
