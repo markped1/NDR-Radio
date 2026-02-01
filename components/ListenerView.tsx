@@ -89,14 +89,21 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   const currentAd = sponsoredVideos[adIndex];
 
   const renderTicker = () => {
-    const defaultText = "BRINGING YOU NEWS, CULTURE, AND MUSIC FROM THE NIGERIAN DIASPORA WORLDWIDE • STREAMING LIVE • NIGERIA DIASPORA RADIO • THE VOICE OF NIGERIA ABROAD";
-    const tickerText = news.length > 0
-      ? `BREAKING NEWS: ${news.map(n => n.title.toUpperCase()).join(' • ')}`
+    const defaultText = "WELCOME TO NIGERIA DIASPORA RADIO • THE VOICE OF NIGERIA ABROAD • STREAMING LIVE AFROBEATS AND CULTURE";
+    const hasNews = news && news.length > 0;
+
+    // Create a dynamic ticker string with high-impact separators
+    const tickerText = hasNews
+      ? news.map(n => n.title.toUpperCase()).join(' • ')
       : defaultText;
 
     return (
-      <div className="bg-[#008751] py-3 shadow-lg overflow-hidden relative border-y border-white/10">
-        <div className="flex whitespace-nowrap animate-marquee">
+      <div className="bg-[#008751] py-3 shadow-lg overflow-hidden relative border-y border-white/10 flex items-center">
+        {/* Fixed "Breaking" Label to guarantee user sees the change */}
+        <div className="bg-red-600 text-white px-3 py-1 text-[8px] font-black uppercase z-10 shrink-0 animate-pulse ml-2 rounded-sm border border-red-400">
+          BREAKING
+        </div>
+        <div className="flex whitespace-nowrap animate-marquee flex-grow">
           <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/90 px-4">
             {tickerText} • {tickerText}
           </span>
@@ -352,7 +359,7 @@ const ListenerView: React.FC<ListenerViewProps> = ({
       <style dangerouslySetInnerHTML={{
         __html: `
         @keyframes marquee { 0% { transform: translateX(0); } 100% { transform: translateX(-50%); } }
-        .animate-marquee { display: inline-flex; animation: marquee 30s linear infinite; }
+        .animate-marquee { display: inline-flex; animation: marquee 15s linear infinite; }
         .no-scrollbar::-webkit-scrollbar { display: none; }
       `}} />
     </div>

@@ -14,77 +14,59 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
   await dbService.cleanupOldNews();
   const existingNews = await dbService.getNews();
 
-  // If we have news and it's fresh, we might still want to fetch weather if it's a scheduled broadcast
-  // But for the sake of efficiency, we sync both together.
-
   return withRetry(async () => {
     const ai = getAIClient();
-    console.log("Triggering live news scan via Gemini 2.0 Flash...");
+    console.log("Triggering live news scan via Gemini 2.0 Flash (Grounding enabled)...");
+
     const prompt = `Search for the most CURRENT breaking news (strictly last 24 hours) from global and Nigerian sources.
-    ALSO, find the current weather conditions for ${locationLabel}.
-    
-    FOCUS AREAS:
-    1. NIGERIA BREAKING: Politics and Economy.
-    2. DIASPORA: Nigerian community updates worldwide.
-    3. SPORTS: Latest Nigerian football/sports results.
-    4. WEATHER: Current temp and sky conditions in ${locationLabel}.
-    
-    Return a JSON object with:
-    - 'news': Array of objects with 'title', 'content', 'category'.
-       IMPORTANT: 'content' must be DETAILED and COMPREHENSIVE (150-200 words per item) for a full radio bulletin.
-    - 'headlines': Array of short strings (headlines only).
-    - 'weather': Object with 'condition', 'temp', 'location'.`;
+        ALSO, find the current weather conditions for ${locationLabel}.
+        
+        FOCUS AREAS:
+        1. NIGERIA BREAKING: Politics and Economy.
+        2. DIASPORA: Nigerian community updates worldwide.
+        3. SPORTS: Latest Nigerian football/sports results.
+        4. WEATHER: Current temp and sky conditions in ${locationLabel}.
+        
+        CRITICAL: Return EXACTLY a JSON object with this structure:
+        {
+          "news": [{"title": "Short Title", "content": "150-200 word detailed story", "category": "Nigeria|Sports|etc"}],
+          "weather": {"condition": "Description", "temp": "XX°C", "location": "City Name"}
+        }`;
 
     try {
       const response = await ai.models.generateContent({
         model: "gemini-2.0-flash",
-        contents: prompt,
+        contents: [{ role: 'user', parts: [{ text: prompt }] }],
         config: {
-          tools: [{ googleSearch: {} }],
-          responseMimeType: "application/json",
-          responseSchema: {
-            type: Type.OBJECT,
-            properties: {
-              news: {
-                type: Type.ARRAY,
-                items: {
-                  type: Type.OBJECT,
-                  properties: {
-                    title: { type: Type.STRING },
-                    content: { type: Type.STRING },
-                    category: { type: Type.STRING }
-                  },
-                  required: ["title", "content", "category"]
-                }
-              },
-              headlines: {
-                type: Type.ARRAY,
-                items: { type: Type.STRING }
-              },
-              weather: {
-                type: Type.OBJECT,
-                properties: {
-                  condition: { type: Type.STRING },
-                  temp: { type: Type.STRING },
-                  location: { type: Type.STRING }
-                }
-              }
-            }
-          }
+          tools: [{ googleSearch: {} }] as any,
         },
       });
 
-      const data = JSON.parse(response.text || "{}");
+      const text = response.text || "{}";
+      console.log("AI Raw Response:", text);
+
+      // Extract JSON from potential markdown blocks
+      let jsonStr = text;
+      if (text.includes('```')) {
+        const matches = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/);
+        if (matches && matches[1]) {
+          jsonStr = matches[1];
+        }
+      }
+
+      const data = JSON.parse(jsonStr);
+      console.log("AI Parsed Data:", data);
 
       const processedNews: NewsItem[] = (data.news || []).map((item: any) => ({
         id: Math.random().toString(36).substr(2, 9),
         title: item.title,
         content: item.content,
-        category: item.category as any, // Cast to valid category
+        category: item.category as any,
         timestamp: Date.now()
       }));
 
       if (processedNews.length > 0) {
+        console.log(`Successfully fetched ${processedNews.length} news items. Storing to Supabase...`);
         await dbService.saveNews(processedNews);
       }
 
@@ -95,7 +77,6 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
     } catch (error) {
       console.error("Advanced News/Weather scanning failed", error);
 
-      // FALLBACK: If API fails (e.g. invalid key, offline), return a placeholder so the UI isn't empty.
       if (existingNews.length === 0) {
         const offlineNews = [{
           id: 'offline-' + Date.now(),
@@ -105,7 +86,6 @@ export async function scanNigerianNewspapers(locationLabel: string = "Global"): 
           timestamp: Date.now()
         }];
 
-        // IMPORTANT: Save this fallback to DB so fetchData() sees it!
         await dbService.setNews(offlineNews as NewsItem[]);
 
         return {
