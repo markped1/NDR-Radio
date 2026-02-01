@@ -1,8 +1,26 @@
 @import "tailwindcss";
 
+@layer base {
+  body {
+    @apply bg-[#ecf7f1] text-[#004d30] font-sans selection:bg-green-100;
+  }
+}
+
 @layer components {
   .animate-scale-in {
     animation: scale-in 0.3s ease-out;
+  }
+
+  .capsule-border {
+    @apply border border-[#cfdfd6] rounded-full px-4 py-2;
+  }
+
+  .capsule-card {
+    @apply bg-white border border-[#cfdfd6] rounded-[2rem] shadow-sm;
+  }
+
+  .premium-shadow {
+    box-shadow: 0 20px 40px rgba(0, 77, 48, 0.05);
   }
 }
 
@@ -69,5 +87,23 @@ html,
 body,
 #root {
   height: 100%;
-  overflow: hidden;
+}
+
+.marquee-container {
+  @apply bg-[#d7ecd1] border-y border-[#c5e4bc] py-2 overflow-hidden;
+}
+
+.marquee-text {
+  @apply text-[#00693e] font-black uppercase text-[10px] tracking-widest whitespace-nowrap inline-flex items-center;
+  animation: marquee 40s linear infinite;
+}
+
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
 }

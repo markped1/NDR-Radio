@@ -9,6 +9,7 @@ import { getDetailedBulletinAudio, getNewsAudio, getJingleAudio } from './servic
 import { realtimeService } from './services/realtimeService';
 import { UserRole, MediaFile, AdminMessage, AdminLog, NewsItem, ListenerReport } from './types';
 import { DESIGNER_NAME, APP_NAME, JINGLE_1, JINGLE_2 } from './constants';
+import { StationState } from './services/realtimeService';
 
 const App: React.FC = () => {
   const [role, setRole] = useState<UserRole>(UserRole.LISTENER);
@@ -24,6 +25,8 @@ const App: React.FC = () => {
   const [activeTrackId, setActiveTrackId] = useState<string | null>(null);
   const [activeTrackUrl, setActiveTrackUrl] = useState<string | null>(null);
   const [currentTrackName, setCurrentTrackName] = useState<string>('Live Stream');
+  const [stationState, setStationState] = useState<StationState | null>(null);
+  const [duration, setDuration] = useState(0);
   const [isShuffle, setIsShuffle] = useState(true);
   const [isDucking, setIsDucking] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
@@ -225,48 +228,36 @@ const App: React.FC = () => {
 
     // REAL-TIME CLOUD SYNC
     const unsubscribe = realtimeService.subscribeToStation((state) => {
+      setStationState(state);
+
       // If I am the Admin, I ignore updates to avoid loops or cross-admin contamination
       if (role === UserRole.ADMIN) return;
 
       console.log("Cloud Update Received:", state);
 
       if (state.is_playing && state.track_name) {
-        // IDENTITY-BASED MATCHING: Find the track in our local list by name or ID
-        // This avoids trying to play the Admin's local blob URL which will fail on other devices.
+        // IDENTITY-BASED MATCHING
         const track = playlistRef.current.find(t =>
           t.id === state.track_id ||
           t.name === state.track_name
         );
 
         if (track) {
-          console.log("Matched local track:", track.name);
           setActiveTrackId(track.id);
           setActiveTrackUrl(track.url);
           setCurrentTrackName(cleanTrackName(track.name));
 
-          // CALCULATE OFFSET: How many seconds have passed since the admin started?
           const offset = Math.max(0, (Date.now() - state.started_at) / 1000);
-          console.log(`Cloud Offset: ${offset}s`);
           setStartTime(offset);
         } else if (state.track_url && !state.track_url.startsWith('blob:')) {
-          // Fallback to the cloud URL if it's a real URL (e.g. internet stream)
-          console.log("Using remote URL fallback:", state.track_url);
           setActiveTrackUrl(state.track_url);
           setCurrentTrackName(cleanTrackName(state.track_name));
-        } else {
-          // Last resort fallback: Play the default stream if the track isn't found locally
-          console.log("Track not found locally, falling back to default stream");
-          setCurrentTrackName(`Live: ${cleanTrackName(state.track_name)} (Stream)`);
         }
 
-        // Only set playing to true if we were already in "listening" mode (interaction happened)
-        // or if we want to snap to the admin's state. 
-        // Note: isRadioPlayingRef.current tracks our local intention.
         if (isRadioPlayingRef.current) {
           setIsRadioPlaying(true);
         }
       } else {
-        // If Admin stops, we stop everyone
         setIsRadioPlaying(false);
       }
     });
@@ -333,24 +324,18 @@ const App: React.FC = () => {
   };
 
   return (
-    <div className="h-[100dvh] bg-[#f8fafc] text-[#008751] flex flex-col w-full relative overflow-hidden font-sans selection:bg-green-100 italic-none">
+    <div className="h-[100dvh] bg-[#ecf7f1] text-[#004d30] flex flex-col w-full relative overflow-hidden font-sans selection:bg-green-100 italic-none">
       {/* 1. PREMIUM HEADER */}
-      <header className="px-4 py-3 sticky top-0 z-50 bg-white/80 backdrop-blur-xl flex justify-between items-center border-b border-green-50/50">
-        <div className="flex items-center space-x-2">
-          <div className="w-8 h-8 bg-[#008751] rounded-lg flex items-center justify-center shadow-lg shadow-green-900/20 rotate-3 transition-transform hover:rotate-0">
-            <i className="fas fa-broadcast-tower text-white text-xs"></i>
-          </div>
-          <div className="flex flex-col">
-            <h1 className="text-[12px] font-black tracking-tight text-green-900 leading-none">{APP_NAME}</h1>
-            <p className="text-[7px] text-green-600/60 font-bold uppercase tracking-[0.2em] mt-0.5">Voice of the Diaspora</p>
-          </div>
+      <header className="px-6 py-4 sticky top-0 z-50 bg-white flex justify-between items-center premium-shadow">
+        <div className="flex flex-col">
+          <h1 className="text-[12px] font-black tracking-widest text-[#004d30] leading-none uppercase">{APP_NAME}</h1>
+          <p className="text-[8px] text-gray-400 font-bold uppercase tracking-tight mt-1">DESIGNED BY {DESIGNER_NAME}</p>
         </div>
         <button
           onClick={role === UserRole.ADMIN ? () => setRole(UserRole.LISTENER) : () => setShowAuth(true)}
-          className="w-8 h-8 rounded-full bg-green-50 flex items-center justify-center border border-green-100 text-green-800 hover:bg-green-100 transition-all active:scale-90"
-          title="Admin Access"
+          className="capsule-border text-[9px] font-black uppercase text-[#004d30] hover:bg-green-50 transition-all active:scale-95"
         >
-          <i className={`fas ${role === UserRole.ADMIN ? 'fa-user-shield' : 'fa-lock'} text-[10px]`}></i>
+          {role === UserRole.ADMIN ? "LOGOUT" : "ADMIN LOGIN"}
         </button>
       </header>
 
@@ -381,7 +366,7 @@ const App: React.FC = () => {
       )}
 
       {/* 2. MAIN CONTENT AREA */}
-      <main className="flex-grow overflow-y-auto no-scrollbar relative">
+      <main id="main-scroll-container" className="flex-grow overflow-y-auto no-scrollbar relative scroll-smooth bg-[#ecf7f1]">
         {role === UserRole.ADMIN ? (
           <div className="p-4">
             <AdminView
@@ -392,6 +377,8 @@ const App: React.FC = () => {
               onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
               news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
               currentPosition={currentPosition}
+              stationState={stationState}
+              duration={duration}
             />
           </div>
         ) : (
@@ -400,57 +387,42 @@ const App: React.FC = () => {
               news={news} onStateChange={setIsRadioPlaying} isRadioPlaying={isRadioPlaying}
               sponsoredVideos={sponsoredMedia} activeTrackUrl={activeTrackUrl}
               currentTrackName={currentTrackName} adminMessages={adminMessages} reports={reports}
-              activeTab={activeTab}
-              onPlayTrack={(t) => { setHasInteracted(true); setActiveTrackId(t.id); setActiveTrackUrl(t.url); setCurrentTrackName(cleanTrackName(t.name)); setIsRadioPlaying(true); }}
+              onPlayTrack={(t) => { /* Restricted */ }}
+              stationState={stationState}
             />
           </div>
         )}
       </main>
 
-      {/* 3. PERSISTENT MINI PLAYER & NAV BAR (Listener Only) */}
-      {role === UserRole.LISTENER && (
+      {/* 3. PERSISTENT MINI PLAYER & NAV BAR (Admin Only) */}
+      {role === UserRole.ADMIN && (
         <div className="z-40 bg-white/80 backdrop-blur-xl border-t border-green-50/50 pb-safe shadow-[0_-10px_30px_rgba(0,0,0,0.02)]">
-          {/* Mini Player */}
-          {(isRadioPlaying || activeTrackId) && (
-            <div
-              onClick={() => setActiveTab('radio')}
-              className="px-4 py-2 flex items-center space-x-3 cursor-pointer group active:scale-[0.98] transition-all"
-            >
-              <div className="w-10 h-10 rounded-xl bg-green-100 flex-shrink-0 relative overflow-hidden border border-green-200">
-                {isRadioPlaying ? (
-                  <div className="absolute inset-0 flex items-center justify-center space-x-0.5">
-                    <div className="w-0.5 h-3 bg-green-600 animate-music-bar-1"></div>
-                    <div className="w-0.5 h-4 bg-green-600 animate-music-bar-2"></div>
-                    <div className="w-0.5 h-3 bg-green-600 animate-music-bar-3"></div>
-                  </div>
-                ) : (
-                  <div className="absolute inset-0 flex items-center justify-center">
-                    <i className="fas fa-play text-[#008751] text-xs"></i>
-                  </div>
-                )}
-              </div>
-              <div className="flex-grow min-w-0">
-                <p className="text-[10px] font-black text-green-900 truncate uppercase tracking-tight">{currentTrackName}</p>
-                <div className="flex items-center space-x-2">
-                  <span className="text-[7px] font-bold text-green-500 uppercase tracking-widest">{isRadioPlaying ? 'On Air' : 'Paused'}</span>
-                  {isDucking && <span className="text-[6px] bg-red-500 text-white px-1.5 rounded-full font-black animate-pulse">AI BROADCAST</span>}
-                </div>
-              </div>
-              <button
-                onClick={(e) => { e.stopPropagation(); setIsRadioPlaying(!isRadioPlaying); }}
-                className="w-10 h-10 rounded-full flex items-center justify-center text-green-900 hover:bg-green-50 transition-colors"
-              >
-                <i className={`fas ${isRadioPlaying ? 'fa-pause' : 'fa-play'} text-sm`}></i>
-              </button>
-            </div>
-          )}
-
           {/* Bottom Navigation */}
           <nav className="flex justify-around items-center h-16">
-            <NavButton active={activeTab === 'home'} icon="home" label="Home" onClick={() => setActiveTab('home')} />
-            <NavButton active={activeTab === 'news'} icon="newspaper" label="News" onClick={() => setActiveTab('news')} />
-            <NavButton active={activeTab === 'radio'} icon="circle-play" label="Listen" onClick={() => setActiveTab('radio')} />
-            <NavButton active={activeTab === 'community'} icon="users" label="Social" onClick={() => setActiveTab('community')} />
+            <NavButton
+              active={false}
+              icon="terminal"
+              label="Command"
+              onClick={() => document.getElementById('admin-command')?.scrollIntoView({ behavior: 'smooth' })}
+            />
+            <NavButton
+              active={false}
+              icon="newspaper"
+              label="News"
+              onClick={() => document.getElementById('admin-news')?.scrollIntoView({ behavior: 'smooth' })}
+            />
+            <NavButton
+              active={false}
+              icon="archive"
+              label="Vault"
+              onClick={() => document.getElementById('admin-media')?.scrollIntoView({ behavior: 'smooth' })}
+            />
+            <NavButton
+              active={false}
+              icon="list-ul"
+              label="Logs"
+              onClick={() => document.getElementById('admin-logs')?.scrollIntoView({ behavior: 'smooth' })}
+            />
           </nav>
         </div>
       )}
@@ -473,6 +445,7 @@ const App: React.FC = () => {
           forcePlaying={isRadioPlaying}
           onTrackEnded={handlePlayNext}
           onTimeUpdate={setCurrentPosition}
+          onDurationChange={setDuration}
           startTime={startTime}
           isDucking={isDucking}
           role={role}

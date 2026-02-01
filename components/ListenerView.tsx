@@ -1,9 +1,11 @@
-
 import React, { useState, useEffect, useCallback, useRef } from 'react';
 import SponsoredVideo from './SponsoredVideo';
-import { NewsItem, MediaFile, AdminMessage, ListenerReport } from '../types';
+import { NewsItem, MediaFile, AdminMessage, ListenerReport, UserRole } from '../types';
 import { dbService } from './../services/dbService';
 import { CHANNEL_INTRO, DESIGNER_NAME, APP_NAME } from '../constants';
+import RadioPlayer from './RadioPlayer';
+import NowPlaying from './NowPlaying';
+import { StationState } from '../services/realtimeService';
 
 interface ListenerViewProps {
   news: NewsItem[];
@@ -15,11 +17,8 @@ interface ListenerViewProps {
   adminMessages: AdminMessage[];
   reports: ListenerReport[];
   onPlayTrack: (track: MediaFile) => void;
-  activeTab: 'home' | 'news' | 'radio' | 'community';
+  stationState: StationState | null;
 }
-
-import RadioPlayer from './RadioPlayer';
-import { UserRole } from '../types';
 
 const ListenerView: React.FC<ListenerViewProps> = ({
   news,
@@ -30,7 +29,7 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   currentTrackName,
   reports,
   adminMessages = [],
-  activeTab
+  stationState
 }) => {
   const [location, setLocation] = useState<string>('Syncing...');
   const [localTime, setLocalTime] = useState<string>('');
@@ -104,186 +103,174 @@ const ListenerView: React.FC<ListenerViewProps> = ({
   const currentAd = sponsoredVideos[adIndex];
 
   return (
-    <div className="flex flex-col h-full bg-[#f8fafc] text-[#008751]">
-      {/* 1. HOME TAB */}
-      {activeTab === 'home' && (
-        <div className="flex flex-col space-y-6 pb-20 px-4 animate-in fade-in slide-in-from-right-4 duration-500">
-          {/* Welcome Card */}
-          <section className="pt-4">
-            <div className="bg-gradient-to-br from-[#008751] to-green-900 rounded-[2rem] p-6 text-white shadow-2xl relative overflow-hidden">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
-              <div className="relative z-10 space-y-4">
-                <div className="flex justify-between items-start">
-                  <div className="space-y-1">
-                    <p className="text-[10px] font-black uppercase tracking-[0.3em] opacity-70 italic-none">Live Now</p>
-                    <h2 className="text-2xl font-black tracking-tighter leading-tight italic-none">NIGERIA DIASPORA <br /> RADIO</h2>
-                  </div>
-                  <i className="fas fa-satellite-dish animate-pulse text-green-300"></i>
-                </div>
-                <div className="pt-2">
-                  <p className="text-[9px] font-medium text-green-50/80 leading-relaxed max-w-[80%] italic-none">Connecting Nigerians across the globe with news, music, and community spirit.</p>
-                </div>
+    <div className="flex flex-col bg-[#ecf7f1] text-[#004d30] scroll-smooth pb-32">
+      {/* 1. HERO SECTION & CONTROLS (Unified for exact layout match) */}
+      <section id="home" className="pt-8 px-6 animate-in fade-in duration-700">
+        <NowPlaying
+          state={stationState}
+          isAdmin={false}
+          isPlaying={isRadioPlaying}
+          onTogglePlay={() => onStateChange(!isRadioPlaying)}
+          middleContent={
+            <div className="w-full px-2">
+              <div className="capsule-border bg-[#d7ecd1]/60 backdrop-blur-sm border-[#c5e4bc] text-[#00693e] text-[9px] font-black uppercase text-center tracking-[0.2em] py-4 shadow-sm">
+                NOW PLAYING / LIVE STREAM
               </div>
             </div>
-          </section>
+          }
+        />
+      </section>
 
-          {/* Featured Ads / Video */}
-          <section className="space-y-3">
-            <div className="flex justify-between items-center px-1">
-              <h3 className="text-[11px] font-black uppercase text-green-950 tracking-widest italic-none">Featured Highlights</h3>
-              <span className="text-[8px] font-bold text-green-600 uppercase italic-none">See All</span>
-            </div>
-            <div className="relative group">
-              {currentAd ? (
-                <div className="rounded-3xl overflow-hidden border border-green-100 h-[220px] shadow-xl group-hover:shadow-green-900/10 transition-shadow">
-                  {currentAd.type === 'image' ? (
-                    <img src={currentAd.url} className="w-full h-full object-cover" alt="ad" />
-                  ) : (
-                    <SponsoredVideo video={currentAd} onEnded={nextAd} />
-                  )}
-                </div>
-              ) : (
-                <div className="bg-white h-[180px] rounded-3xl border border-dashed border-green-200 flex flex-col items-center justify-center opacity-40">
-                  <i className="fas fa-signal mb-2 text-green-600"></i>
-                  <span className="text-[8px] font-black uppercase tracking-widest italic-none">Signal Lost: Awaiting Sponsors</span>
-                </div>
-              )}
-            </div>
-          </section>
-
-          {/* Quick News Preview */}
-          <section className="space-y-3">
-            <h3 className="text-[11px] font-black uppercase text-green-950 tracking-widest px-1 italic-none">Latest Headlines</h3>
-            <div className="space-y-3">
-              {news.slice(0, 2).map((n, i) => (
-                <div key={i} className="bg-white p-4 rounded-2xl border border-green-50 shadow-sm flex space-x-4 items-center active:scale-[0.98] transition-transform">
-                  <div className="w-10 h-10 bg-green-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                    <i className="fas fa-bolt text-[#008751] text-xs"></i>
-                  </div>
-                  <div className="flex-grow min-w-0">
-                    <p className="text-[10px] font-black text-green-950 line-clamp-1 italic-none">{n.title}</p>
-                    <p className="text-[8px] text-green-600/60 font-medium italic-none">Just moments ago</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
+      {/* 3. STATUS & INVITE BAR */}
+      <div className="px-6 py-8 flex items-center justify-between">
+        <div className="bg-white rounded-2xl px-5 py-3 border border-[#cfdfd6] flex flex-col premium-shadow">
+          <span className="text-[9px] font-black text-[#008751] uppercase tracking-tighter">GLOBAL DIASPORA</span>
+          <span className="text-[8px] font-bold text-gray-400 mt-0.5">{localTime}</span>
         </div>
-      )}
+        <button
+          onClick={handleShare}
+          className="bg-[#008751] hover:bg-[#00693e] text-white rounded-2xl px-6 py-4 flex items-center space-x-2 shadow-lg active:scale-95 transition-all"
+        >
+          <i className="fas fa-paper-plane text-[10px]"></i>
+          <span className="text-[10px] font-black uppercase tracking-widest">{shareFeedback || 'INVITE FRIENDS'}</span>
+        </button>
+      </div>
 
-      {/* 2. NEWS TAB */}
-      {activeTab === 'news' && (
-        <div className="flex flex-col space-y-4 pb-20 px-4 animate-in fade-in slide-in-from-right-4 duration-500">
-          <header className="pt-6 pb-2">
-            <h2 className="text-3xl font-black text-green-950 tracking-tighter italic-none">NEWSROOM</h2>
-            <p className="text-[10px] font-bold text-green-600 uppercase tracking-[0.2em] italic-none">Verified Intelligence</p>
-          </header>
+      {/* 4. NEWS TICKER MARQUEE */}
+      <div className="marquee-container mb-8">
+        <div className="marquee-text">
+          {[...Array(3)].map((_, i) => (
+            <span key={i} className="flex items-center">
+              <span className="px-10">BRINGING YOU NEWS, CULTURE, AND MUSIC FROM THE NIGERIAN DIASPORA WORLDWIDE</span>
+              <span className="w-1.5 h-1.5 bg-green-500 rounded-full mx-2"></span>
+            </span>
+          ))}
+        </div>
+      </div>
 
-          <div className="bg-[#008751] h-10 rounded-xl flex items-center overflow-hidden shadow-lg shadow-green-900/20">
-            <div className="flex whitespace-nowrap animate-marquee items-center text-white">
-              <span className="text-[9px] font-black uppercase px-8 tracking-widest italic-none">{CHANNEL_INTRO}</span>
-              {news.map((n, i) => (
-                <span key={i} className="text-[9px] font-black uppercase px-8 italic-none">
-                  <span className="text-red-400 mr-2">●</span> {n.title}
-                </span>
-              ))}
-            </div>
-          </div>
+      {/* 5. NEWSROOM (LATEST INTELLIGENCE) */}
+      <section id="news" className="px-6 space-y-4">
+        <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pl-1">LATEST INTELLIGENCE</h3>
+        <div className="space-y-4">
+          {news.slice(0, 5).map((n, i) => (
+            <article key={i} className="capsule-card p-6 premium-shadow relative overflow-hidden group hover:scale-[1.01] transition-transform">
+              <div className="flex justify-between items-start mb-2">
+                <span className="bg-green-100 text-[#008751] px-2 py-0.5 rounded-full text-[6px] font-black uppercase tracking-widest">HEADLINE</span>
+                <span className="text-[6px] font-mono text-gray-400 uppercase">JUST IN</span>
+              </div>
+              <h4 className="text-[12px] font-black text-[#004d30] leading-snug uppercase tracking-tight">{n.title}</h4>
+              <p className="text-[10px] text-gray-500 font-medium leading-relaxed mt-2 line-clamp-2">{n.content}</p>
+              <div className="mt-4 flex items-center text-[#008751] text-[8px] font-black uppercase tracking-widest">
+                Read Full Report <i className="fas fa-arrow-right ml-2 group-hover:translate-x-1 transition-transform"></i>
+              </div>
+            </article>
+          ))}
+        </div>
+      </section>
 
-          <div className="space-y-4 pt-4">
-            {news.map((n, i) => (
-              <article key={i} className="bg-white p-6 rounded-[2rem] border border-green-50 shadow-xl space-y-4 relative overflow-hidden group">
-                <div className="absolute top-0 right-0 w-24 h-24 bg-green-50 rounded-full -mr-12 -mt-12 opacity-50 group-hover:scale-110 transition-transform"></div>
-                <div className="relative z-10 space-y-3">
-                  <span className="text-[7px] font-black bg-green-100 text-green-800 px-3 py-1 rounded-full uppercase tracking-widest italic-none">Top Story</span>
-                  <h3 className="text-lg font-black text-green-950 leading-tight italic-none">{n.title}</h3>
-                  <p className="text-[10px] text-green-800 font-medium leading-relaxed italic-none">{n.content}</p>
+      {/* 6. SPONSORED HIGHLIGHTS */}
+      <section className="px-6 pt-10 space-y-4">
+        <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pl-1">SPONSORED HIGHLIGHTS</h3>
+        <div className="relative capsule-card overflow-hidden premium-shadow aspect-video group">
+          {currentAd ? (
+            <>
+              {currentAd.type === 'image' ? (
+                <img src={currentAd.url} className="w-full h-full object-cover" alt="ad" />
+              ) : (
+                <SponsoredVideo video={currentAd} onEnded={nextAd} />
+              )}
+              {/* Overlay matching image */}
+              <div className="absolute inset-x-0 bottom-0 p-6 bg-gradient-to-t from-black/80 to-transparent text-white">
+                <div className="flex items-center space-x-2">
+                  <span className="bg-white/20 backdrop-blur-md px-2 py-0.5 rounded-full text-[6px] font-black uppercase tracking-widest border border-white/30">● SPONSORED</span>
                 </div>
-              </article>
+                <div className="mt-4">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest">VERIFIED SPONSOR</h4>
+                  <p className="text-[8px] font-bold text-white/60 tracking-tighter mt-1 uppercase">GLOBAL DIASPORA NETWORK</p>
+                </div>
+              </div>
+            </>
+          ) : (
+            <div className="w-full h-full bg-black/5 flex items-center justify-center">
+              <span className="text-[8px] font-black uppercase tracking-widest opacity-20">Awaiting Sponsored Content</span>
+            </div>
+          )}
+        </div>
+      </section>
+
+      {/* 7. GOOGLE ADS SECTION */}
+      <section id="community" className="px-6 py-10 space-y-4">
+        <div className="flex justify-between items-center pl-1">
+          <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest">GOOGLE ADS</h3>
+          <div className="flex items-center space-x-1 opacity-20">
+            <i className="fas fa-info-circle text-[8px]"></i>
+            <span className="text-[6px] font-bold uppercase">AdChoices</span>
+          </div>
+        </div>
+
+        <div className="capsule-card bg-white p-8 text-center space-y-4 premium-shadow">
+          <div className="space-y-2">
+            <h4 className="text-[16px] font-black text-[#004d30] uppercase tracking-tighter">PREMIUM AFRICAN FASHION</h4>
+            <p className="text-[10px] text-gray-500 font-medium leading-relaxed max-w-[240px] mx-auto">
+              Global shipping starting at $15. Shop the latest authentic styles direct from Lagos!
+            </p>
+          </div>
+          <button className="w-full h-[1px] bg-gradient-to-r from-blue-400 via-purple-400 to-orange-400 opacity-50"></button>
+        </div>
+      </section>
+
+      {/* 8. ADMIN ANNOUNCEMENTS (OFFICIAL UPDATES) */}
+      {adminMessages.length > 0 && (
+        <section className="px-6 pb-10 space-y-4">
+          <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pl-1">OFFICIAL UPDATES</h3>
+          <div className="space-y-3">
+            {adminMessages.map((m, i) => (
+              <div key={i} className="bg-[#008751] p-5 rounded-3xl text-white shadow-xl flex items-start space-x-4 animate-in slide-in-from-left-2 duration-500">
+                <div className="w-10 h-10 rounded-2xl bg-white/20 backdrop-blur-md flex items-center justify-center flex-shrink-0 border border-white/30">
+                  <i className="fas fa-bullhorn text-[12px]"></i>
+                </div>
+                <div className="flex-grow min-w-0">
+                  <div className="flex justify-between items-center mb-1">
+                    <span className="text-[8px] font-black uppercase tracking-widest opacity-60">Station HQ</span>
+                    <span className="text-[6px] font-black bg-white/20 px-2 py-0.5 rounded-full">LIVE</span>
+                  </div>
+                  <p className="text-[11px] font-bold leading-relaxed">{m.text}</p>
+                </div>
+              </div>
             ))}
           </div>
-        </div>
+        </section>
       )}
 
-      {/* 3. RADIO TAB (Full Immersive) */}
-      {activeTab === 'radio' && (
-        <div className="h-full flex flex-col justify-center animate-in zoom-in duration-500">
-          <RadioPlayer
-            onStateChange={onStateChange}
-            activeTrackUrl={activeTrackUrl}
-            currentTrackName={currentTrackName}
-            forcePlaying={isRadioPlaying}
-            visualOnly={true}
-          />
-        </div>
-      )}
-
-      {/* 4. COMMUNITY TAB */}
-      {activeTab === 'community' && (
-        <div className="flex flex-col space-y-6 pb-20 px-4 animate-in fade-in slide-in-from-right-4 duration-500">
-          <header className="pt-6">
-            <h2 className="text-3xl font-black text-green-950 tracking-tighter italic-none">COMMUNITY</h2>
-            <p className="text-[10px] font-bold text-green-600 uppercase tracking-[0.2em] italic-none">Voices of the Diaspora</p>
-          </header>
-
-          <section className="space-y-4">
-            <div className="bg-white/60 backdrop-blur-md rounded-[2.5rem] p-4 border border-green-50 shadow-inner max-h-[400px] overflow-y-auto no-scrollbar space-y-4">
-              {reports.length > 0 ? (
-                reports.map((r, i) => (
-                  <div key={i} className="bg-white p-5 rounded-3xl shadow-sm border border-green-50 relative animate-in slide-in-from-bottom-2 duration-300">
-                    <div className="flex justify-between items-center mb-2">
-                      <span className="text-[8px] font-black text-green-950 uppercase flex items-center italic-none">
-                        <i className="fas fa-map-marker-alt mr-2 text-red-500"></i> {r.location}
-                      </span>
-                      <span className="text-[7px] font-mono text-gray-400 italic-none">{new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
-                    </div>
-                    <p className="text-[11px] text-green-900 font-medium leading-relaxed italic-none">"{r.content}"</p>
-                  </div>
-                ))
-              ) : (
-                <div className="p-20 text-center opacity-20">
-                  <i className="fas fa-users text-4xl mb-4"></i>
-                  <p className="text-[10px] font-black uppercase tracking-widest italic-none">No one has spoken yet</p>
+      {/* 9. COMMUNITY REPORTS (Integrated) */}
+      <section className="px-6 pb-20 space-y-6">
+        <h3 className="text-[9px] font-bold text-gray-400 uppercase tracking-widest pl-1">VOICES OF THE DIASPORA</h3>
+        <div className="space-y-3">
+          {reports.length > 0 ? (
+            reports.map((r, i) => (
+              <div key={i} className="bg-white p-5 rounded-3xl border border-[#cfdfd6] premium-shadow group">
+                <div className="flex justify-between items-center mb-1">
+                  <span className="text-[7px] font-black text-[#008751] uppercase tracking-tighter flex items-center">
+                    <i className="fas fa-map-marker-alt mr-1.5 text-red-400"></i> {r.location}
+                  </span>
+                  <span className="text-[6px] font-mono text-gray-300 uppercase">{new Date(r.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
                 </div>
-              )}
-            </div>
-
-            <div className="bg-[#008751] p-8 rounded-[3rem] text-white shadow-2xl relative overflow-hidden group">
-              <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl group-hover:bg-white/20 transition-all"></div>
-              <div className="relative z-10 space-y-4 text-center">
-                <h3 className="text-xl font-black italic-none uppercase tracking-tighter">Your voice matters</h3>
-                <p className="text-[9px] font-medium opacity-80 leading-relaxed italic-none">Report events, send greetings, or share updates from your city here.</p>
-                {!isReporting ? (
-                  <button
-                    onClick={() => setIsReporting(true)}
-                    className="w-full bg-white text-[#008751] py-4 rounded-2xl font-black uppercase tracking-widest text-[10px] shadow-lg active:scale-95 transition-all italic-none"
-                  >
-                    <i className="fas fa-microphone-alt mr-2"></i> Click to broadcast
-                  </button>
-                ) : (
-                  <form onSubmit={handleReport} className="space-y-3 animate-in zoom-in duration-300">
-                    <textarea
-                      value={reportText}
-                      onChange={(e) => setReportText(e.target.value)}
-                      placeholder="What's happening?"
-                      className="w-full bg-green-50/20 border border-white/20 rounded-2xl p-4 text-xs h-24 outline-none focus:bg-white/10 italic-none font-medium text-white placeholder:text-white/40"
-                    />
-                    <div className="flex space-x-2">
-                      <button type="submit" className="flex-grow bg-white text-[#008751] py-3 rounded-xl font-black text-[9px] uppercase italic-none">Send</button>
-                      <button type="button" onClick={() => setIsReporting(false)} className="px-6 bg-white/10 text-white py-3 rounded-xl text-[9px] font-black italic-none">X</button>
-                    </div>
-                  </form>
-                )}
+                <p className="text-[10px] text-[#004d30] font-bold leading-tight mt-2">"{r.content}"</p>
               </div>
+            ))
+          ) : (
+            <div className="bg-white/40 border border-dashed border-[#cfdfd6] p-10 rounded-3xl text-center">
+              <span className="text-[8px] font-black uppercase tracking-widest opacity-20">Community is quiet...</span>
             </div>
-          </section>
+          )}
         </div>
-      )}
+      </section>
 
-      {/* Footer Branding (Static) */}
-      <footer className="mt-auto px-4 py-8 text-center opacity-30">
+
+      {/* Footer Branding */}
+      <footer className="mt-auto px-4 py-8 text-center opacity-30 pb-32">
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-green-950 italic-none">{APP_NAME}</p>
-        <p className="text-[7px] font-bold text-green-950/50 uppercase tracking-[0.5em] mt-2 italic-none">{DESIGNER_NAME} &bull; PREMIO v2.5</p>
+        <p className="text-[6px] font-bold text-green-950/50 uppercase tracking-[0.5em] mt-2 italic-none">{DESIGNER_NAME} &bull; MOBILE PREMIO</p>
       </footer>
 
       <style dangerouslySetInnerHTML={{

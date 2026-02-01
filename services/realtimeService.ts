@@ -6,6 +6,8 @@ export interface StationState {
     track_id: string;
     track_url: string;
     track_name: string;
+    track_artist?: string;
+    duration?: number;
     started_at: number; // Cloud timestamp (Date.now())
     updated_at?: number;
 }

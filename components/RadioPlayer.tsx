@@ -11,6 +11,7 @@ interface RadioPlayerProps {
   forcePlaying?: boolean;
   onTrackEnded?: () => void;
   onTimeUpdate?: (time: number) => void;
+  onDurationChange?: (duration: number) => void;
   startTime?: number;
   isAdmin?: boolean;
   role?: UserRole;
@@ -25,6 +26,7 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   forcePlaying = false,
   onTrackEnded,
   onTimeUpdate,
+  onDurationChange,
   startTime = 0,
   role = UserRole.LISTENER,
   isDucking = false,
@@ -106,7 +108,10 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
       setCurrentTime(audio.currentTime);
       onTimeUpdateRef.current?.(audio.currentTime);
     });
-    audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
+    audio.addEventListener('loadedmetadata', () => {
+      setDuration(audio.duration);
+      onDurationChange?.(audio.duration);
+    });
 
     audio.src = activeTrackUrl || DEFAULT_STREAM_URL;
     audio.crossOrigin = (audio.src.startsWith('blob:') || audio.src.startsWith('data:')) ? null : "anonymous";

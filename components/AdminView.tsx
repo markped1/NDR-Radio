@@ -2,6 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { dbService } from '../services/dbService';
 import { realtimeService } from '../services/realtimeService';
 import { AdminLog, MediaFile, NewsItem, ListenerReport } from '../types';
+import NowPlaying from './NowPlaying';
 
 interface AdminViewProps {
   onRefreshData: () => void;
@@ -19,6 +20,8 @@ interface AdminViewProps {
   news?: NewsItem[];
   onTriggerFullBulletin?: () => Promise<void>;
   currentPosition: number;
+  stationState: any; // Add stationState prop
+  duration: number;   // Add duration prop
 }
 
 type Tab = 'command' | 'bulletin' | 'media' | 'inbox' | 'logs';
@@ -36,7 +39,9 @@ const AdminView: React.FC<AdminViewProps> = ({
   onPlayJingle,
   news = [],
   onTriggerFullBulletin,
-  currentPosition
+  currentPosition,
+  stationState,
+  duration
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
@@ -131,6 +136,8 @@ const AdminView: React.FC<AdminViewProps> = ({
       is_playing: true,
       track_id: track.id,
       track_name: track.name,
+      track_artist: "NDR Artist", // Placeholder or extract from filename
+      duration: duration || 0,
       started_at: Date.now(),
       updated_at: Date.now()
     });
@@ -159,107 +166,145 @@ const AdminView: React.FC<AdminViewProps> = ({
   });
 
   return (
-    <div className="space-y-4 pb-20 text-green-900 animate-scale-in">
+    <div className="space-y-10 pb-32 text-green-900 animate-in fade-in duration-500">
       <input type="file" ref={fileInputRef} className="hidden" multiple onChange={handleFileUpload} />
       <input type="file" ref={folderInputRef} className="hidden" webkitdirectory="true" directory="true" multiple onChange={handleFileUpload} />
 
-      <div className="flex items-center space-x-1.5 px-0.5">
-        <div className="flex-grow flex space-x-1 bg-[#008751]/10 p-1 rounded-xl border border-green-200 shadow-sm overflow-x-auto no-scrollbar">
-          {(['command', 'bulletin', 'media', 'inbox', 'logs'] as Tab[]).map(t => (
-            <button key={t} onClick={() => setActiveTab(t)} className={`flex-1 min-w-[65px] py-2 text-[9.5px] font-black uppercase tracking-widest rounded-lg transition-all relative ${activeTab === t ? 'bg-[#008751] text-white shadow-md' : 'text-green-950/50 hover:text-green-950'}`}>
-              {t === 'bulletin' ? 'Newsroom' : t}
-              {t === 'inbox' && reports.length > 0 && <span className="absolute -top-1 -right-1 bg-red-500 text-white text-[6px] w-3 h-3 rounded-full flex items-center justify-center border border-white animate-bounce">{reports.length}</span>}
-            </button>
-          ))}
-        </div>
-      </div>
+      {/* 1. MASTER COMMAND CENTER */}
+      <section id="admin-command" className="space-y-4">
+        <header className="px-1">
+          <h2 className="text-xl font-black uppercase tracking-tighter text-green-950">Master Command</h2>
+          <p className="text-[8px] font-bold text-green-600 uppercase tracking-widest">Global Station Control</p>
+        </header>
 
-      <div className="flex items-center justify-between mx-1 px-4 py-2 bg-blue-600 text-white rounded-xl shadow-lg border border-blue-400">
-        <div className="flex items-center space-x-2">
-          <i className="fas fa-satellite-dish animate-pulse text-xs"></i>
-          <span className="text-[7px] font-black uppercase tracking-widest">Ticker Auto-Sync</span>
+        <div className="bg-white p-6 rounded-[2.5rem] border border-green-100 shadow-xl relative overflow-hidden group">
+          <div className="absolute top-0 right-0 w-32 h-32 bg-green-50 rounded-full -mr-16 -mt-16 opacity-50 group-hover:scale-110 transition-transform"></div>
+          <NowPlaying
+            state={stationState}
+            isAdmin={true}
+            isPlaying={isRadioPlaying}
+            onTogglePlay={handleToggleRadio}
+            onSeek={(time) => {
+              realtimeService.updateStation({
+                started_at: Date.now() - (time * 1000)
+              });
+            }}
+          />
         </div>
-        <div className="text-right">
-          <span className="text-[6px] font-bold uppercase opacity-70 block">Next Headlines In</span>
-          <span className="text-[10px] font-mono font-black">{nextSyncIn}</span>
-        </div>
-      </div>
 
-      {statusMsg && <div className="mx-1 p-2 text-[8px] font-black uppercase text-center rounded-lg bg-green-600 text-white border border-green-700 animate-pulse shadow-sm">{statusMsg}</div>}
-
-      {activeTab === 'command' && (
-        <div className="space-y-4">
-          <div className="bg-white p-6 rounded-3xl text-center border border-green-100 shadow-md relative">
-            <button onClick={handleToggleRadio} className={`w-28 h-28 rounded-full border-8 ${isRadioPlaying ? 'bg-red-500 border-red-50' : 'bg-[#008751] border-green-50'} text-white flex flex-col items-center justify-center mx-auto mb-4 shadow-2xl active:scale-95 transition-all`}>
-              <i className={`fas ${isRadioPlaying ? 'fa-stop' : 'fa-play'} text-3xl mb-1`}></i>
-              <span className="text-[9px] font-black uppercase tracking-widest">{isRadioPlaying ? 'Stop Broadcast' : 'Go Live (Cloud)'}</span>
-            </button>
-            <div className="bg-green-50 py-2.5 px-5 rounded-2xl border border-green-100 inline-block shadow-inner"><span className="text-[8px] font-black text-green-700 uppercase block tracking-widest truncate max-w-[200px]">{currentTrackName}</span></div>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <button onClick={() => folderInputRef.current?.click()} className="bg-white p-4 rounded-2xl border border-green-100 flex flex-col items-center justify-center space-y-2 hover:bg-green-50 shadow-sm"><i className="fas fa-folder-open text-lg text-green-600"></i><span className="text-[8px] font-black uppercase tracking-widest">Import Folder</span></button>
-            <div className="bg-white p-4 rounded-2xl border border-amber-100 space-y-2 shadow-sm">
-              <h3 className="text-[7px] font-black uppercase tracking-widest text-amber-600">Jingles</h3>
-              <div className="flex space-x-2">
-                <button onClick={() => onPlayJingle?.(1)} className="flex-1 bg-amber-500 text-white py-2 rounded-lg text-[7px] font-black uppercase">ID 1</button>
-                <button onClick={() => onPlayJingle?.(2)} className="flex-1 bg-amber-500 text-white py-2 rounded-lg text-[7px] font-black uppercase">ID 2</button>
-              </div>
+        <div className="grid grid-cols-2 gap-3">
+          <button onClick={() => folderInputRef.current?.click()} className="bg-white p-6 rounded-3xl border border-green-100 flex flex-col items-center justify-center space-y-2 hover:bg-green-50 shadow-sm active:scale-95 transition-all">
+            <i className="fas fa-folder-open text-xl text-green-600"></i>
+            <span className="text-[9px] font-black uppercase tracking-widest">Batch Import</span>
+          </button>
+          <div className="bg-white p-6 rounded-3xl border border-amber-100 space-y-3 shadow-sm">
+            <h3 className="text-[8px] font-black uppercase tracking-widest text-amber-600">Flash Jingles</h3>
+            <div className="flex space-x-2">
+              <button onClick={() => onPlayJingle?.(1)} className="flex-1 bg-amber-500 text-white py-2.5 rounded-xl text-[8px] font-black uppercase shadow-sm active:scale-95 transition-all">ID 1</button>
+              <button onClick={() => onPlayJingle?.(2)} className="flex-1 bg-amber-500 text-white py-2.5 rounded-xl text-[8px] font-black uppercase shadow-sm active:scale-95 transition-all">ID 2</button>
             </div>
           </div>
         </div>
-      )}
 
-      {activeTab === 'bulletin' && (
-        <div className="space-y-4">
-          <div className="bg-[#008751] p-6 rounded-3xl text-white shadow-lg"><h2 className="text-lg font-black uppercase italic mb-1">News Intelligence</h2><button onClick={onTriggerFullBulletin} className="bg-white text-green-700 px-6 py-2.5 rounded-xl text-[8px] font-black uppercase">Force Ticker Sync</button></div>
-          <div className="space-y-3">
-            {news.map(n => (
-              <div key={n.id} className="bg-white p-4 rounded-2xl border border-green-50 shadow-sm space-y-3 animate-scale-in">
-                <h4 className="text-[10px] font-black text-green-950">{n.title}</h4>
-                <p className="text-[9px] text-green-800 font-medium">{n.content}</p>
-                <button onClick={() => handleManualBroadcast(n)} className="w-full bg-green-50 text-green-700 py-2 rounded-lg text-[7px] font-black uppercase flex items-center justify-center"><i className="fas fa-volume-up mr-2"></i> Voice Broadcast Story</button>
-              </div>
-            ))}
+        <div className="bg-blue-600 p-4 rounded-3xl text-white flex items-center justify-between shadow-lg">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 rounded-full bg-white/20 flex items-center justify-center animate-pulse">
+              <i className="fas fa-satellite-dish text-[10px]"></i>
+            </div>
+            <div>
+              <p className="text-[9px] font-black uppercase tracking-tighter">Auto-Sync Heartbeat</p>
+              <p className="text-[7px] font-bold opacity-70 uppercase">Headlines + Weather</p>
+            </div>
+          </div>
+          <div className="text-right">
+            <p className="text-[12px] font-mono font-black">{nextSyncIn}</p>
           </div>
         </div>
-      )}
+      </section>
 
-      {activeTab === 'media' && (
-        <div className="space-y-4">
-          <div className="flex bg-[#008751]/5 p-1 rounded-xl border border-green-100">
-            <button onClick={() => setMediaSubTab('audio')} className={`flex-1 py-2 text-[8px] font-black uppercase rounded-lg ${mediaSubTab === 'audio' ? 'bg-white text-[#008751] shadow-sm' : 'text-green-600/60'}`}>Tracks</button>
-            <button onClick={() => setMediaSubTab('video')} className={`flex-1 py-2 text-[8px] font-black uppercase rounded-lg ${mediaSubTab === 'video' ? 'bg-white text-[#008751] shadow-sm' : 'text-green-600/60'}`}>Ads</button>
+      {/* 2. LIVE NEWSROOM */}
+      <section id="admin-news" className="space-y-4">
+        <header className="px-1 flex justify-between items-end">
+          <div>
+            <h2 className="text-xl font-black uppercase tracking-tighter text-green-950">Newsroom</h2>
+            <p className="text-[8px] font-bold text-green-600 uppercase tracking-widest">Voice Broadcast Engine</p>
           </div>
-          {mediaSubTab === 'video' && (
-            <button onClick={() => triggerUpload('video/*,image/*')} className="w-full bg-blue-600 text-white py-4 rounded-2xl flex flex-col items-center justify-center shadow-lg active:scale-95 transition-all"><i className="fas fa-cloud-upload-alt text-xl mb-1"></i><span className="text-[10px] font-black uppercase tracking-widest">Upload New Ad Content</span></button>
-          )}
-          <div className="grid gap-2">
+          <button onClick={onTriggerFullBulletin} className="bg-[#008751] text-white px-4 py-2 rounded-xl text-[8px] font-black uppercase shadow-sm">Force Sync</button>
+        </header>
+
+        <div className="space-y-3 overflow-x-auto pb-2 -mx-1 px-1 flex no-scrollbar mask-gradient">
+          {news.map(n => (
+            <div key={n.id} className="min-w-[280px] bg-white p-6 rounded-[2rem] border border-green-50 shadow-md space-y-4 flex flex-col mr-3">
+              <div className="flex-grow space-y-2">
+                <h4 className="text-[11px] font-black text-green-950 leading-tight italic-none uppercase line-clamp-2">{n.title}</h4>
+                <p className="text-[9px] text-green-800 font-medium line-clamp-3">{n.content}</p>
+              </div>
+              <button onClick={() => handleManualBroadcast(n)} className="w-full bg-green-50 text-green-700 py-3 rounded-2xl text-[8px] font-black uppercase flex items-center justify-center active:scale-95 transition-all">
+                <i className="fas fa-microphone-lines mr-2"></i> Voice Broadcast
+              </button>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      {/* 3. MEDIA ARCHIVE */}
+      <section id="admin-media" className="space-y-4">
+        <header className="px-1">
+          <h2 className="text-xl font-black uppercase tracking-tighter text-green-950">Vault</h2>
+          <p className="text-[8px] font-bold text-green-600 uppercase tracking-widest">Library & Assets</p>
+        </header>
+
+        <div className="bg-white rounded-[2.5rem] border border-green-100 shadow-xl overflow-hidden">
+          <div className="flex bg-[#008751]/5 p-2 m-2 rounded-2xl border border-green-50">
+            <button onClick={() => setMediaSubTab('audio')} className={`flex-1 py-2.5 text-[9px] font-black uppercase rounded-xl transition-all ${mediaSubTab === 'audio' ? 'bg-white text-[#008751] shadow-md scale-[1.02]' : 'text-green-600/60'}`}>Tracks</button>
+            <button onClick={() => setMediaSubTab('video')} className={`flex-1 py-2.5 text-[9px] font-black uppercase rounded-xl transition-all ${mediaSubTab === 'video' ? 'bg-white text-[#008751] shadow-md scale-[1.02]' : 'text-green-600/60'}`}>Ad Content</button>
+          </div>
+
+          <div className="max-h-[400px] overflow-y-auto no-scrollbar p-2 space-y-2">
             {filteredMedia.map(item => (
-              <div key={item.id} className="bg-white p-3 rounded-xl border border-green-50 flex items-center justify-between shadow-sm animate-scale-in">
+              <div key={item.id} className="bg-white p-4 rounded-2xl border border-green-50 flex items-center justify-between shadow-sm group hover:border-[#008751]/20 transition-all">
                 <div className="flex items-center space-x-3 truncate pr-4">
-                  <i className={`fas ${item.type === 'audio' ? 'fa-music' : 'fa-film'} text-xs text-green-600`}></i>
-                  <p className="text-[9px] font-bold text-green-950 truncate">{item.name}</p>
+                  <div className={`w-8 h-8 rounded-xl flex items-center justify-center ${item.type === 'audio' ? 'bg-green-50 text-green-600' : 'bg-blue-50 text-blue-600'}`}>
+                    <i className={`fas ${item.type === 'audio' ? 'fa-music' : (item.type === 'video' ? 'fa-film' : 'fa-image')} text-xs`}></i>
+                  </div>
+                  <p className="text-[10px] font-black text-green-950 truncate">{item.name}</p>
                 </div>
-                <div className="flex space-x-1">
-                  <button onClick={() => handlePlaySpecificTrack(item)} className="w-7 h-7 bg-green-50 text-green-600 rounded-full flex items-center justify-center"><i className="fas fa-play text-[8px]"></i></button>
-                  <button onClick={() => dbService.deleteMedia(item.id).then(loadData)} className="w-7 h-7 bg-red-50 text-red-500 rounded-full flex items-center justify-center"><i className="fas fa-trash-alt text-[8px]"></i></button>
+                <div className="flex space-x-1.5">
+                  <button onClick={() => handlePlaySpecificTrack(item)} className="px-4 h-9 bg-[#008751] text-white rounded-xl flex items-center justify-center space-x-2 shadow-sm active:scale-95 transition-all text-[8px] font-black uppercase">
+                    <i className="fas fa-tower-broadcast text-[8px]"></i>
+                    <span>Push</span>
+                  </button>
+                  <button onClick={() => dbService.deleteMedia(item.id).then(loadData)} className="w-9 h-9 bg-red-50 text-red-500 rounded-xl flex items-center justify-center active:scale-95 transition-all"><i className="fas fa-trash-alt text-[8px]"></i></button>
                 </div>
               </div>
             ))}
           </div>
-        </div>
-      )}
 
-      {activeTab === 'logs' && (
-        <div className="bg-white rounded-xl border border-green-50 p-2 max-h-[300px] overflow-y-auto font-mono text-[7px]">
-          {logs.map(log => (
-            <div key={log.id} className="border-b border-green-50 py-1 flex justify-between">
-              <span className="text-green-700">{log.action}</span>
-              <span className="text-gray-400 shrink-0 ml-2">{new Date(log.timestamp).toLocaleTimeString()}</span>
-            </div>
-          ))}
+          <div className="p-4 bg-green-50/50">
+            <button onClick={() => triggerUpload(mediaSubTab === 'audio' ? 'audio/*' : 'video/*,image/*')} className="w-full bg-white border border-green-200 text-green-900 py-4 rounded-[1.5rem] font-black text-[9px] uppercase tracking-widest shadow-sm active:scale-95 transition-all">
+              <i className="fas fa-plus-circle mr-2 opacity-50"></i> Add to library
+            </button>
+          </div>
         </div>
-      )}
+      </section>
+
+      {/* 4. STATION LOGS */}
+      <section id="admin-logs" className="space-y-4">
+        <header className="px-1">
+          <h2 className="text-xl font-black uppercase tracking-tighter text-green-950">Intelligence</h2>
+          <p className="text-[8px] font-bold text-green-600 uppercase tracking-widest">Operation Logs</p>
+        </header>
+        <div className="bg-black/90 rounded-[2rem] p-6 shadow-2xl font-mono border border-white/5">
+          <div className="max-h-[200px] overflow-y-auto no-scrollbar space-y-2">
+            {logs.slice().reverse().map(log => (
+              <div key={log.id} className="py-1.5 flex justify-between items-start border-b border-white/5 last:border-0 opacity-80 hover:opacity-100 transition-opacity">
+                <span className="text-[8px] text-green-400 leading-tight">{log.action}</span>
+                <span className="text-[7px] text-white/30 shrink-0 ml-4">{new Date(log.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
     </div>
   );
 };
