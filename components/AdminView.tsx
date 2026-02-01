@@ -18,6 +18,7 @@ interface AdminViewProps {
   onPlayJingle?: (index: 1 | 2) => Promise<void>;
   news?: NewsItem[];
   onTriggerFullBulletin?: () => Promise<void>;
+  currentPosition: number;
 }
 
 type Tab = 'command' | 'bulletin' | 'media' | 'inbox' | 'logs';
@@ -34,7 +35,8 @@ const AdminView: React.FC<AdminViewProps> = ({
   onPushBroadcast,
   onPlayJingle,
   news = [],
-  onTriggerFullBulletin
+  onTriggerFullBulletin,
+  currentPosition
 }) => {
   const [activeTab, setActiveTab] = useState<Tab>('command');
   const [mediaSubTab, setMediaSubTab] = useState<MediaSubTab>('audio');
@@ -115,7 +117,8 @@ const AdminView: React.FC<AdminViewProps> = ({
       is_playing: newState,
       track_id: newState ? (mediaList.find(m => m.name === currentTrackName)?.id || '0') : '',
       track_name: currentTrackName,
-      started_at: Date.now(),
+      // If we are starting, the 'started_at' is now MINUS the offset we've already played
+      started_at: newState ? (Date.now() - (currentPosition * 1000)) : Date.now(),
       updated_at: Date.now()
     });
   };

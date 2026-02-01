@@ -28,6 +28,7 @@ const App: React.FC = () => {
   const [isDucking, setIsDucking] = useState(false);
   const [hasInteracted, setHasInteracted] = useState(false);
   const [currentLocation, setCurrentLocation] = useState<string>("Global");
+  const [currentPosition, setCurrentPosition] = useState(0); // Track current playback position in seconds
 
   const aiAudioContextRef = useRef<AudioContext | null>(null);
   const isSyncingRef = useRef(false);
@@ -39,6 +40,8 @@ const App: React.FC = () => {
 
   // Ref to track playing state without triggering re-renders of the subscription effect
   const isRadioPlayingRef = useRef(isRadioPlaying);
+  const [startTime, setStartTime] = useState(0); // Add local state for the seek-to time
+
   useEffect(() => { isRadioPlayingRef.current = isRadioPlaying; }, [isRadioPlaying]);
 
   useEffect(() => {
@@ -238,6 +241,11 @@ const App: React.FC = () => {
           setActiveTrackId(track.id);
           setActiveTrackUrl(track.url);
           setCurrentTrackName(cleanTrackName(track.name));
+
+          // CALCULATE OFFSET: How many seconds have passed since the admin started?
+          const offset = Math.max(0, (Date.now() - state.started_at) / 1000);
+          console.log(`Cloud Offset: ${offset}s`);
+          setStartTime(offset);
         } else if (state.track_url && !state.track_url.startsWith('blob:')) {
           // Fallback to the cloud URL if it's a real URL (e.g. internet stream)
           console.log("Using remote URL fallback:", state.track_url);
@@ -382,6 +390,8 @@ const App: React.FC = () => {
           currentTrackName={currentTrackName}
           forcePlaying={isRadioPlaying}
           onTrackEnded={handlePlayNext}
+          onTimeUpdate={setCurrentPosition}
+          startTime={startTime}
           isDucking={isDucking}
           role={role}
         />
@@ -401,6 +411,7 @@ const App: React.FC = () => {
             onPlayAll={handlePlayAll} onSkipNext={handlePlayNext}
             onPushBroadcast={handlePushBroadcast} onPlayJingle={handlePlayJingle}
             news={news} onTriggerFullBulletin={() => runScheduledBroadcast(false)}
+            currentPosition={currentPosition}
           />
         )}
       </main>

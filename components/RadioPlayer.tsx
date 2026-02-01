@@ -10,6 +10,8 @@ interface RadioPlayerProps {
   currentTrackName?: string;
   forcePlaying?: boolean;
   onTrackEnded?: () => void;
+  onTimeUpdate?: (time: number) => void;
+  startTime?: number;
   isAdmin?: boolean;
   role?: UserRole;
   isDucking?: boolean;
@@ -21,6 +23,8 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   currentTrackName = 'Live Stream',
   forcePlaying = false,
   onTrackEnded,
+  onTimeUpdate,
+  startTime = 0,
   role = UserRole.LISTENER,
   isDucking = false
 }) => {
@@ -37,9 +41,12 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
   const gainNodeRef = useRef<GainNode | null>(null);
 
   const onTrackEndedRef = useRef(onTrackEnded);
+  const onTimeUpdateRef = useRef(onTimeUpdate);
+
   useEffect(() => {
     onTrackEndedRef.current = onTrackEnded;
-  }, [onTrackEnded]);
+    onTimeUpdateRef.current = onTimeUpdate;
+  }, [onTrackEnded, onTimeUpdate]);
 
   const initAudioContext = () => {
     try {
@@ -93,7 +100,10 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     audio.addEventListener('waiting', () => setStatus('LOADING'));
     audio.addEventListener('playing', handlePlay);
     audio.addEventListener('ended', () => onTrackEndedRef.current?.());
-    audio.addEventListener('timeupdate', () => setCurrentTime(audio.currentTime));
+    audio.addEventListener('timeupdate', () => {
+      setCurrentTime(audio.currentTime);
+      onTimeUpdateRef.current?.(audio.currentTime);
+    });
     audio.addEventListener('loadedmetadata', () => setDuration(audio.duration));
 
     audio.src = activeTrackUrl || DEFAULT_STREAM_URL;
@@ -130,12 +140,19 @@ const RadioPlayer: React.FC<RadioPlayerProps> = ({
     if (audioRef.current) {
       if (forcePlaying && audioRef.current.paused) {
         initAudioContext();
+
+        // If we have a startTime and we are just starting, seek before playing
+        if (startTime > 0 && Math.abs(audioRef.current.currentTime - startTime) > 2) {
+          console.log(`Seeking to startTime: ${startTime}`);
+          audioRef.current.currentTime = startTime;
+        }
+
         audioRef.current.play().catch(() => setStatus('ERROR'));
       } else if (!forcePlaying && !audioRef.current.paused) {
         audioRef.current.pause();
       }
     }
-  }, [forcePlaying]);
+  }, [forcePlaying, startTime]);
 
   useEffect(() => {
     const targetGain = isDucking ? volume * 0.15 : volume;
